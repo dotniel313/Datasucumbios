@@ -1,0 +1,203 @@
+<!DOCTYPE html><html lang="es"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Ubuntu', sans-serif; background-color: #0d1117; color: #c9d1d9; margin: 2em; }
+        .main-container { width: 95%; max-width: 1800px; margin: 0 auto; }
+        h1 { color: #58a6ff; text-align: center; font-weight: 300; margin-bottom: 20px;}
+        .navigation { display: flex; justify-content: center; gap: 15px; margin-bottom: 40px; flex-wrap: wrap; }
+        .navigation a { color: #8b949e; text-decoration: none; padding: 8px 15px; border-radius: 6px; border: 1px solid #30363d; transition: all 0.2s ease-in-out; }
+        .navigation a.active, .navigation a:hover { color: #c9d1d9; background-color: #161b22; border-color: #58a6ff; }
+        h2.section-title { color: #c9d1d9; font-weight: 400; text-align: left; border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-top: 40px; margin-bottom: 20px; font-size: 1.8em; }
+        .main-content > .section-title:first-child { margin-top: 0; }
+        h3 { font-weight: 400; text-align: center; color: #8b949e; margin: 0; }
+        .page-layout { display: grid; grid-template-columns: 1fr 3.5fr; gap: 30px; align-items: start; }
+        .left-column { display: flex; flex-direction: column; gap: 30px; position: sticky; top: 2em; }
+        .main-content { min-width: 0; display: flex; flex-direction: column; gap: 20px;}
+        .chart-container { background-color: #161b22; border: 2px solid #30363d; border-radius: 8px; padding: 20px; display:flex; flex-direction:column; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .chart-header img { max-height: 35px; opacity: 0.7; }
+        .main-chart-container { min-height: 500px; }
+        .secondary-charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .sidebar-section { background-color: #161b22; border-radius: 8px; padding: 20px; }
+        .kpi-card { text-align: center; margin-bottom: 15px; }
+        .kpi-value { font-size: 2.5em; font-weight: 700; color: #c9d1d9; }
+        .kpi-label { font-size: 1em; color: #8b949e; }
+        .narrativa-list { list-style: none; padding: 0; margin: 0; line-height: 1.5; }
+        .narrativa-list li { background-color: #0d1117; border-left: 2px solid #58a6ff; padding: 10px; margin-bottom: 8px; border-radius: 4px; font-size: 0.9em;}
+        .echart-instance { width: 100%; flex-grow: 1; min-height: 250px; cursor: pointer; }
+        .no-data-message { display: flex; justify-content: center; align-items: center; height: 100%; color: #8b949e; font-style: italic; }
+        #filter-status { background-color: #161b22; padding: 15px; border-radius: 8px; }
+        #filter-text { font-size: 0.9em; margin-bottom: 15px; line-height: 1.5; }
+        #clear-filters { background-color: #f9826c; color: #0d1117; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; }
+        footer { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 50px; padding-top: 20px; border-top: 1px solid #30363d; color: #8b949e;}
+        footer img { max-height: 40px; opacity: 0.8; }
+    </style>
+    <title>Perfil de {{ nombre_parroquia }}</title>
+</head>
+<body>
+    <div class="main-container">
+        <h1>Población y Diversidad: {{ nombre_parroquia }}</h1>
+        <nav class="navigation">{% for item in navegacion %}<a href="{{ item.href }}" class="{% if 'parroquia' in item.href %}active{% endif %}">{{ item.texto }}</a>{% endfor %}</nav>
+        <div class="page-layout">
+            <div class="left-column">
+                <div class="sidebar-section" id="kpiContainer"></div>
+                <div class="chart-container">
+                    <div class="chart-header"><h3>Género</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div>
+                    <div id="generoChart" class="echart-instance"></div>
+                </div>
+                <div class="sidebar-section">
+                     <h3>Análisis Dinámico</h3>
+                    <ul class="narrativa-list" id="narrativa_list"></ul>
+                </div>
+                <div id="filter-status" style="display: none;">
+                    <h4>Filtros Activos</h4>
+                    <div id="filter-text"></div>
+                    <button id="clear-filters">Limpiar Filtros</button>
+                </div>
+            </div>
+            <div class="main-content">
+                <h2 class="section-title">Demografía</h2>
+                <div class="chart-container main-chart-container">
+                    <div class="chart-header"><h3>Población por Grupo de Edad y Comunidad</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div>
+                    <div id="edadComunidadChart" class="echart-instance"></div>
+                </div>
+                <div class="secondary-charts-grid">
+                    <div class="chart-container">
+                        <div class="chart-header"><h3>Cabeza de Familia por Género</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div>
+                        <div id="jefesGeneroChart" class="echart-instance"></div>
+                    </div>
+                    <div class="chart-container">
+                         <div class="chart-header"><h3>Cabeza de Familia por Estado Civil</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div>
+                        <div id="jefesEstadoCivilChart" class="echart-instance"></div>
+                    </div>
+                </div>
+                <h2 class="section-title">Diversidad</h2>
+                <div class="secondary-charts-grid">
+                    <div class="chart-container">
+                         <div class="chart-header"><h3>Nivel de Lengua</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div>
+                        <div id="nivelLenguaChart" class="echart-instance"></div>
+                    </div>
+                    <div class="chart-container">
+                         <div class="chart-header"><h3>Lengua Materna</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div>
+                        <div id="lenguaChart" class="echart-instance"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer><span>powered by:</span><img src="{{ url_for('static', filename='img/logo_geotactics.png') }}" alt="Logo de Geotactics"></footer>
+    </div>
+    <script>
+        const nombreParroquia = "{{ nombre_parroquia }}";
+        let activeFilters = {};
+        const theme = 'dark';
+        const toolboxConfig = { show: true, right: 15, top: 0, feature: { saveAsImage: { show: true, title: 'Guardar Imagen' }, dataView: { show: true, title: 'Ver Datos', readOnly: true, lang: ['Vista de Datos', 'Cerrar', 'Refrescar'] } } };
+
+        // --- LÓGICA DE PROCESAMIENTO EN FRONTEND ---
+        function calculateCounts(data, key) { return data.reduce((acc, item) => { const value = item[key]; if (value) { acc[value] = (acc[value] || 0) + 1; } return acc; }, {}); }
+        function pivotData(data, catField, seriesField) {
+            if (!data || data.length === 0) return { categories: [], series: [] };
+            const categories = [...new Set(data.map(item => item[catField]).filter(Boolean))].sort();
+            const seriesNames = [...new Set(data.map(item => item[seriesField]).filter(Boolean))].sort();
+            const dataMap = data.reduce((acc, item) => {
+                if (item[catField] && item[seriesField]) {
+                    const key = `${item[catField]}|${item[seriesField]}`;
+                    acc[key] = (acc[key] || 0) + 1;
+                }
+                return acc;
+            }, {});
+            const series = seriesNames.map(name => ({ name, data: categories.map(cat => dataMap[`${cat}|${name}`] || 0) }));
+            return { categories, series };
+        }
+
+        async function fetchData() {
+            const params = new URLSearchParams(activeFilters);
+            const url = `/api/parroquia_completa/${nombreParroquia.replace(/ /g, '_')}?${params.toString()}`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                updateDashboard(data);
+                updateFilterStatus();
+            } catch (error) { console.error("Error al obtener datos:", error); }
+        }
+        
+        function updateDashboard(data) {
+            const ciudadanos = data.ciudadanos || [];
+            const jefes = data.jefes || [];
+
+            const kpis = {
+                total: ciudadanos.length,
+                seleccion: ciudadanos.length,
+                edad_promedio: ciudadanos.length > 0 ? ciudadanos.reduce((sum, c) => sum + (c.edad || 0), 0) / ciudadanos.filter(c => c.edad).length : 0
+            };
+            const kpis_hogares = { total: jefes.length };
+
+            document.getElementById('kpiContainer').innerHTML = `<h3>Indicadores</h3><div class="kpi-card"><div class="kpi-value">${kpis.total.toLocaleString()}</div><div class="kpi-label">Población Total</div></div><div class="kpi-card"><div class="kpi-value">${kpis_hogares.total.toLocaleString()}</div><div class="kpi-label">Hogares</div></div><div class="kpi-card"><div class="kpi-value">${kpis.edad_promedio.toFixed(1)}</div><div class="kpi-label">Edad Promedio</div></div>`;
+            
+            // LÓGICA RESTAURADA: Generar y mostrar narrativas
+            const narrativas = [];
+            if (kpis.total > 0) {
+                narrativas.push(`Se han registrado <b>${kpis.total.toLocaleString()}</b> ciudadanos en la parroquia.`);
+                const generoPrincipal = Object.entries(calculateCounts(ciudadanos, 'genero')).sort((a,b) => b[1] - a[1])[0];
+                if (generoPrincipal) {
+                    narrativas.push(`El género predominante es <b>${generoPrincipal[0]}</b> con ${generoPrincipal[1]} personas.`);
+                }
+            }
+             document.getElementById('narrativa_list').innerHTML = narrativas.map(item => `<li>${item}</li>`).join('') || '<li>No hay análisis disponible</li>';
+            
+            const distGenero = calculateCounts(ciudadanos, 'genero');
+            const distLengua = calculateCounts(ciudadanos, 'lengua_materna');
+            const distNivelLengua = calculateCounts(ciudadanos, 'nivel');
+            const distJefesGenero = calculateCounts(jefes, 'genero');
+            const distJefesEstadoCivil = calculateCounts(jefes, 'estado_civil');
+            const graficoEdadComunidad = pivotData(ciudadanos, 'comunidad', 'grupo_edad');
+            const graficoEtniaComunidad = pivotData(ciudadanos, 'comunidad', 'etnia');
+            
+            createPieOrDonutChart('generoChart', 'Género', distGenero, 'genero', true);
+            createPieOrDonutChart('lenguaChart', 'Lengua Materna', distLengua, 'lengua_materna', false);
+            createPieOrDonutChart('nivelLenguaChart', 'Nivel de Lengua', distNivelLengua, 'nivel', false);
+            createPieOrDonutChart('jefesGeneroChart', 'Cabeza de Familia por Género', distJefesGenero, 'genero', true); // Se asume que el filtro es por género del jefe
+            createPieOrDonutChart('jefesEstadoCivilChart', 'Cabeza de Familia por Estado Civil', distJefesEstadoCivil, 'estado_civil', false);
+            createStackedBarChart('edadComunidadChart', 'Población por Grupo de Edad y Comunidad', graficoEdadComunidad, 'comunidad', 'grupo_edad');
+            createStackedBarChart('etniaComunidadChart', 'Distribución de Etnia por Comunidad', graficoEtniaComunidad, 'comunidad', 'etnia');
+        }
+
+        // ... (El resto de funciones JS son las que ya hemos estabilizado)
+        function createStackedBarChart(elementId, title, data, categoryFilterKey, seriesFilterKey) {
+            const chartDom = document.getElementById(elementId);
+            if (!chartDom) return;
+            echarts.dispose(chartDom);
+            if (!data || !data.categories || data.categories.length === 0 || !data.series || data.series.length === 0) { chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles.</h3></div>'; return; }
+            const myChart = echarts.init(chartDom, theme);
+            const seriesWithOptions = data.series.map(s => ({...s, type: 'bar', stack: 'total', emphasis: { focus: 'series' }}));
+            const option = { backgroundColor: 'transparent', tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } }, toolbox: toolboxConfig, legend: { data: data.series.map(s => s.name), top: 'bottom', textStyle: { color: '#c9d1d9' } }, grid: { top: '10%', bottom: '15%', left: '3%', right: '4%', containLabel: true }, xAxis: { type: 'category', data: data.categories, axisLabel: { color: '#c9d1d9', rotate: 30 } }, yAxis: { type: 'value', axisLabel: { color: '#c9d1d9' } }, series: seriesWithOptions };
+            myChart.setOption(option);
+            myChart.on('click', (params) => { if (params.seriesName) { activeFilters[`filtro_${categoryFilterKey}`] = params.name; activeFilters[`filtro_${seriesFilterKey}`] = params.seriesName; fetchData(); } });
+        }
+        function createPieOrDonutChart(elementId, title, data, filterKey, isDonut) {
+            const chartDom = document.getElementById(elementId);
+            if (!chartDom) return;
+            echarts.dispose(chartDom);
+            if (!data || Object.keys(data).length === 0) { chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles</h3></div>'; return; }
+            const myChart = echarts.init(chartDom, theme);
+            const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
+            const option = { backgroundColor: 'transparent', tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' }, toolbox: toolboxConfig, series: [{ type: 'pie', radius: isDonut ? ['40%', '65%'] : '65%', center: ['50%', '45%'], data: chartData, label: { show: false } }] };
+            myChart.setOption(option);
+            if (filterKey) { myChart.on('click', (params) => { if (activeFilters[`filtro_${filterKey}`] === params.name) { delete activeFilters[`filtro_${filterKey}`]; } else { activeFilters[`filtro_${filterKey}`] = params.name; } fetchData(); }); }
+        }
+        function updateFilterStatus() {
+            const container = document.getElementById('filter-status');
+            const textEl = document.getElementById('filter-text');
+            const hasFilters = Object.keys(activeFilters).length > 0;
+            container.style.display = hasFilters ? 'block' : 'none';
+            if (hasFilters) {
+                textEl.innerHTML = `<ul class="narrativa-list" style="margin:0; padding:0;">${Object.entries(activeFilters).map(([k, v]) => `<li><strong>${k.replace('filtro_', '')}:</strong> ${v}</li>`).join('')}</ul>`;
+            }
+        }
+        document.getElementById('clear-filters').addEventListener('click', () => { activeFilters = {}; fetchData(); });
+        document.addEventListener('DOMContentLoaded', fetchData);
+    </script>
+</body>
+</html>

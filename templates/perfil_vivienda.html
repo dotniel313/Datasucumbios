@@ -1,0 +1,207 @@
+<!DOCTYPE html><html lang="es"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Ubuntu', sans-serif; background-color: #0d1117; color: #c9d1d9; margin: 2em; }
+        .main-container { width: 95%; max-width: 1800px; margin: 0 auto; }
+        h1 { color: #58a6ff; text-align: center; font-weight: 300; margin-bottom: 20px;}
+        .navigation { display: flex; justify-content: center; gap: 15px; margin-bottom: 40px; flex-wrap: wrap; }
+        .navigation a { color: #8b949e; text-decoration: none; padding: 8px 15px; border-radius: 6px; border: 1px solid #30363d; transition: all 0.2s ease-in-out; }
+        .navigation a.active, .navigation a:hover { color: #c9d1d9; background-color: #161b22; border-color: #58a6ff; }
+        h2.section-title { color: #c9d1d9; font-weight: 400; text-align: left; border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-top: 40px; margin-bottom: 20px; font-size: 1.8em; }
+        .main-content > .section-title:first-child { margin-top: 0; }
+        h3 { font-weight: 400; text-align: center; color: #8b949e; margin: 0; }
+        .page-layout { display: grid; grid-template-columns: 1fr 3.5fr; gap: 30px; align-items: start; }
+        .left-column { display: flex; flex-direction: column; gap: 30px; position: sticky; top: 2em; }
+        .main-content { min-width: 0; display: flex; flex-direction: column; gap: 20px;}
+        .chart-container { background-color: #161b22; border: 2px solid #30363d; border-radius: 8px; padding: 20px; display:flex; flex-direction:column; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .chart-header img { max-height: 35px; opacity: 0.7; }
+        .main-chart-container { min-height: 500px; }
+        .charts-grid-three-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .sidebar-section { background-color: #161b22; border-radius: 8px; padding: 20px; }
+        .kpi-container-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .kpi-card { text-align: center; }
+        .kpi-value { font-size: 2.5em; font-weight: 700; color: #c9d1d9; }
+        .kpi-label { font-size: 1em; color: #8b949e; }
+        .narrativa-list { list-style: none; padding: 0; margin: 0; line-height: 1.5; }
+        .narrativa-list li { background-color: #0d1117; border-left: 2px solid #58a6ff; padding: 10px; margin-bottom: 8px; border-radius: 4px; font-size: 0.9em;}
+        .echart-instance { width: 100%; flex-grow: 1; min-height: 250px; cursor: pointer; }
+        .no-data-message { display: flex; justify-content: center; align-items: center; height: 100%; color: #8b949e; font-style: italic; }
+        #filter-status { background-color: #161b22; padding: 15px; border-radius: 8px; }
+        #clear-filters { background-color: #f9826c; color: #0d1117; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 15px; }
+        footer { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 50px; padding-top: 20px; border-top: 1px solid #30363d; color: #8b949e;}
+        footer img { max-height: 40px; opacity: 0.8; }
+    </style>
+    <title>Vivienda y Servicios en {{ nombre_parroquia }}</title>
+</head>
+<body>
+    <div class="main-container">
+        <h1>Vivienda y Servicios: {{ nombre_parroquia }}</h1>
+        <nav class="navigation">{% for item in navegacion %}<a href="{{ item.href }}" class="{% if 'vivienda' in item.href %}active{% endif %}">{{ item.texto }}</a>{% endfor %}</nav>
+        <div class="page-layout">
+            <div class="left-column">
+                <div class="sidebar-section" id="kpiContainer"></div>
+                <div class="chart-container">
+                    <div class="chart-header"><h3>Tenencia de Vivienda</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div>
+                    <div id="tenenciaChart" class="echart-instance"></div>
+                </div>
+                <div class="sidebar-section">
+                     <h3>Análisis Dinámico</h3>
+                    <ul class="narrativa-list" id="narrativa_list"></ul>
+                </div>
+                <div id="filter-status" style="display: none;">
+                    <h4>Filtros Activos</h4>
+                    <div id="filter-text"></div>
+                    <button id="clear-filters">Limpiar Filtros</button>
+                </div>
+            </div>
+            <div class="main-content">
+                <h2 class="section-title">Tipología y Propiedad</h2>
+                <div class="chart-container main-chart-container">
+                    <div class="chart-header"><h3>Tipo de Vivienda por Comunidad</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div>
+                    <div id="tipoViviendaChart" class="echart-instance"></div>
+                </div>
+                
+                <h2 class="section-title">Acceso a Servicios Básicos</h2>
+                <div class="charts-grid-three-cols">
+                    <div class="chart-container"><div class="chart-header"><h3>Agua Potable</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div><div id="aguaChart" class="echart-instance"></div></div>
+                    <div class="chart-container"><div class="chart-header"><h3>Energía Eléctrica</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div><div id="energiaChart" class="echart-instance"></div></div>
+                    <div class="chart-container"><div class="chart-header"><h3>Acceso a Internet</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div><div id="internetChart" class="echart-instance"></div></div>
+                </div>
+
+                <h2 class="section-title">Saneamiento</h2>
+                 <div class="charts-grid-three-cols">
+                    <div class="chart-container"><div class="chart-header"><h3>Servicio Higiénico</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div><div id="sanitarioChart" class="echart-instance"></div></div>
+                    <div class="chart-container"><div class="chart-header"><h3>Tratamiento de Aguas</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div><div id="aguasResidualesChart" class="echart-instance"></div></div>
+                    <div class="chart-container"><div class="chart-header"><h3>Gestión de Residuos</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div><div id="residuosChart" class="echart-instance"></div></div>
+                </div>
+            </div>
+        </div>
+        <footer><span>powered by:</span><img src="{{ url_for('static', filename='img/logo_geotactics.png') }}" alt="Logo de Geotactics"></footer>
+    </div>
+    <script>
+        const nombreParroquia = "{{ nombre_parroquia }}";
+        let activeFilters = {};
+        const theme = 'dark';
+        const toolboxConfig = { show: true, right: 15, top: 0, feature: { saveAsImage: { show: true, title: 'Guardar' }, dataView: { show: true, title: 'Ver Datos' } } };
+        
+        let originalData = { viviendas: [] };
+
+        function calculateCounts(data, key) { if (!data) return {}; return data.reduce((acc, item) => { const value = item[key]; if (value) { acc[value] = (acc[value] || 0) + 1; } return acc; }, {}); }
+        function pivotData(data, catField, seriesField) {
+            if (!data || data.length === 0) return { categories: [], series: [] };
+            const categories = [...new Set(data.map(item => item[catField]).filter(Boolean))].sort();
+            const seriesNames = [...new Set(data.map(item => item[seriesField]).filter(Boolean))].sort();
+            const dataMap = data.reduce((acc, item) => { if (item[catField] && item[seriesField]) { const key = `${item[catField]}|${item[seriesField]}`; acc[key] = (acc[key] || 0) + 1; } return acc; }, {});
+            const series = seriesNames.map(name => ({ name, data: categories.map(cat => dataMap[`${cat}|${name}`] || 0) }));
+            return { categories, series };
+        }
+
+        async function fetchData() {
+            const url = `/api/vivienda/${nombreParroquia.replace(/ /g, '_')}`;
+            try {
+                const response = await fetch(url);
+                originalData = await response.json();
+                applyFiltersAndRender();
+            } catch (error) { console.error("Error al obtener datos:", error); }
+        }
+
+        function applyFiltersAndRender() {
+            let filteredData = [...originalData.viviendas];
+            for (const key in activeFilters) {
+                const filterValue = activeFilters[key];
+                const field = key.replace('filtro_', '');
+                if (filterValue) {
+                    filteredData = filteredData.filter(item => item[field] == filterValue);
+                }
+            }
+            updateDashboard({ viviendas: filteredData });
+            updateFilterStatus();
+        }
+        
+        function updateDashboard(data) {
+            const viviendas = data.viviendas || [];
+            const kpis = {
+                viviendas: viviendas.length,
+                area_promedio: viviendas.length > 0 ? viviendas.reduce((sum, v) => sum + (v.area_construccion_m2 || 0), 0) / viviendas.filter(v => v.area_construccion_m2).length : 0
+            };
+
+            document.getElementById('kpiContainer').innerHTML = `<h3>Indicadores</h3>
+                <div class="kpi-container-grid">
+                    <div class="kpi-card"><div class="kpi-value">${kpis.viviendas.toLocaleString()}</div><div class="kpi-label">Total Viviendas</div></div>
+                    <div class="kpi-card"><div class="kpi-value">${kpis.area_promedio.toFixed(1)}</div><div class="kpi-label">Área Prom. (m²)</div></div>
+                </div>`;
+            
+            const narrativas = [];
+            if (viviendas.length > 0) {
+                const topItem = (data, key) => Object.entries(calculateCounts(data, key)).sort((a,b) => b[1] - a[1])[0] || [null, null];
+                const [tenencia, cantTenencia] = topItem(viviendas, 'tenencia');
+                if (tenencia) narrativas.push(`La forma de tenencia más común es <b>${tenencia.toLowerCase()}</b> (${cantTenencia} hogares).`);
+                const aguaCount = calculateCounts(viviendas, 'tiene_agua_potable');
+                const conAgua = aguaCount['Si'] || 0;
+                if (conAgua > 0) {
+                    const porcentajeConAgua = ((conAgua / viviendas.length) * 100).toFixed(1);
+                    narrativas.push(`El <b>${porcentajeConAgua}%</b> de las viviendas cuenta con acceso a agua potable.`);
+                }
+            }
+            document.getElementById('narrativa_list').innerHTML = narrativas.map(item => `<li>${item}</li>`).join('') || '<li>Análisis no disponible</li>';
+
+            const dist = (key) => calculateCounts(viviendas, key);
+            const graficoPrincipal = pivotData(viviendas, 'comunidad', 'tipo_vivienda');
+
+            createPieOrDonutChart('tenenciaChart', 'Tenencia', dist('tenencia'), 'tenencia', true);
+            createPieOrDonutChart('aguaChart', 'Agua Potable', dist('tiene_agua_potable'), 'tiene_agua_potable', true);
+            createPieOrDonutChart('energiaChart', 'Energía Eléctrica', dist('tiene_energia_electrica'), 'tiene_energia_electrica', true);
+            createPieOrDonutChart('internetChart', 'Acceso a Internet', dist('tiene_internet'), 'tiene_internet', true);
+            createPieOrDonutChart('sanitarioChart', 'Servicio Higiénico', dist('tiene_servicio_higienico'), 'tiene_servicio_higienico', true);
+            createPieOrDonutChart('aguasResidualesChart', 'Tratamiento de Aguas', dist('tiene_tratamiento_aguas'), 'tiene_tratamiento_aguas', true);
+            createPieOrDonutChart('residuosChart', 'Gestión de Residuos', dist('gestion_residuos'), 'gestion_residuos', true);
+            createStackedBarChart('tipoViviendaChart', 'Tipo de Vivienda por Comunidad', graficoPrincipal, 'comunidad', 'tipo_vivienda');
+        }
+
+        function createStackedBarChart(elementId, title, data, catKey, seriesKey) {
+            const chartDom = document.getElementById(elementId);
+            if (!chartDom) return;
+            echarts.dispose(chartDom);
+            if (!data || !data.categories || data.categories.length === 0 || !data.series || data.series.length === 0) {
+                chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles.</h3></div>'; return;
+            }
+            const myChart = echarts.init(chartDom, theme);
+            const series = data.series.map(s => ({...s, type: 'bar', stack: 'total', label: { show: true, formatter: p => p.value > 0 ? p.value : '' }}));
+            const option = { backgroundColor: 'transparent', tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } }, toolbox: toolboxConfig, legend: { data: data.series.map(s => s.name), top: 'bottom', textStyle: { color: '#c9d1d9' } }, grid: { top: '10%', bottom: '15%', left: '3%', right: '4%', containLabel: true }, xAxis: { type: 'category', data: data.categories, axisLabel: { color: '#c9d1d9' } }, yAxis: { type: 'value', axisLabel: { color: '#c9d1d9' } }, series: series };
+            myChart.setOption(option);
+            myChart.on('click', (params) => { if (params.seriesName) { activeFilters[`filtro_${catKey}`] = params.name; activeFilters[`filtro_${seriesKey}`] = params.seriesName; applyFiltersAndRender(); } });
+        }
+        function createPieOrDonutChart(elementId, title, data, filterKey, isDonut) {
+            const chartDom = document.getElementById(elementId);
+            if (!chartDom) return;
+            echarts.dispose(chartDom);
+            if (!data || Object.keys(data).length === 0) { chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles</h3></div>'; return; }
+            const myChart = echarts.init(chartDom, theme);
+            const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
+            const option = {
+                backgroundColor: 'transparent', tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' }, toolbox: toolboxConfig,
+                series: [{
+                    type: 'pie', radius: isDonut ? ['40%', '70%'] : '65%', center: ['50%', '45%'], data: chartData,
+                    label: { show: true, formatter: '{b}\n({d}%)', fontSize: 11 }, labelLine: { show: true }
+                }]
+            };
+            myChart.setOption(option);
+            if (filterKey) { myChart.on('click', (params) => { if (activeFilters[`filtro_${filterKey}`] === params.name) { delete activeFilters[`filtro_${filterKey}`]; } else { activeFilters[`filtro_${filterKey}`] = params.name; } applyFiltersAndRender(); }); }
+        }
+        function updateFilterStatus() {
+            const container = document.getElementById('filter-status');
+            const textEl = document.getElementById('filter-text');
+            if (Object.keys(activeFilters).length > 0) {
+                container.style.display = 'block';
+                textEl.innerHTML = `<ul style="list-style:none;padding:0;">${Object.entries(activeFilters).map(([k, v]) => `<li><strong>${k.replace('filtro_', '')}:</strong> ${v}</li>`).join('')}</ul>`;
+            } else { container.style.display = 'none'; }
+        }
+        document.getElementById('clear-filters').addEventListener('click', () => { activeFilters = {}; applyFiltersAndRender(); });
+        document.addEventListener('DOMContentLoaded', fetchData);
+    </script>
+</body>
+</html>
