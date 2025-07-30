@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos consistentes con los perfiles interactivos */
+        body { font-family: 'Ubuntu', sans-serif; background-color: #0d1117; color: #c9d1d9; margin: 2em; }
+        .main-container { width: 95%; max-width: 1800px; margin: 0 auto; }
+        h1 { color: #58a6ff; text-align: center; font-weight: 300; margin-bottom: 20px;}
+        .navigation { display: flex; justify-content: center; gap: 15px; margin-bottom: 40px; flex-wrap: wrap; }
+        .navigation a { color: #8b949e; text-decoration: none; padding: 8px 15px; border-radius: 6px; border: 1px solid #30363d; transition: all 0.2s ease-in-out; }
+        .navigation a.active, .navigation a:hover { color: #c9d1d9; background-color: #161b22; border-color: #58a6ff; }
+        .page-layout { display: grid; grid-template-columns: 1fr 3.5fr; gap: 30px; align-items: start; }
+        .left-column { display: flex; flex-direction: column; gap: 30px; position: sticky; top: 2em; }
+        .main-content { min-width: 0; display: flex; flex-direction: column; gap: 20px;}
+        .chart-container { background-color: #161b22; border: 2px solid #30363d; border-radius: 8px; padding: 20px; display:flex; flex-direction:column; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .chart-header h3 { text-align: left; }
+        .chart-header img { max-height: 35px; opacity: 0.7; }
+        .main-chart-container { flex-grow: 1; min-height: 500px; }
+        .sidebar-section { background-color: #161b22; border-radius: 8px; padding: 20px; }
+        .kpi-card { text-align: center; margin-bottom: 15px; }
+        .kpi-value { font-size: 2.5em; font-weight: 700; color: #c9d1d9; }
+        .kpi-label { font-size: 1em; color: #8b949e; }
+        .echart-instance { width: 100%; flex-grow: 1; min-height: 250px; cursor: pointer; }
+        #filter-status { background-color: #161b22; padding: 15px; border-radius: 8px; }
+        #clear-filters { background-color: #f9826c; color: #0d1117; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 15px; }
+        .no-data-message { display: flex; justify-content: center; align-items: center; height: 100%; color: #8b949e; font-style: italic; }
+        footer { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 50px; padding-top: 20px; border-top: 1px solid #30363d; color: #8b949e;}
+        footer img { max-height: 40px; opacity: 0.8; }
+        .narrativa-list { list-style: none; padding: 0; margin: 0; text-align: left; font-size: 0.9em; }
+        .narrativa-list li { margin-bottom: 8px; }
+    </style>
+    <title>Perfil de Formación: {{ nombre_parroquia }}</title>
+</head>
+<body>
+    <div class="main-container">
+        <h1>Perfil de Formación Académica: {{ nombre_parroquia }}</h1>
+        <nav class="navigation">
+            {% for item in navegacion %}
+                <a href="{{ item.href }}" class="{% if item.activo %}active{% endif %}">{{ item.texto }}</a>
+            {% endfor %}
+        </nav>
+        <div class="page-layout">
+            <div class="left-column">
+                <div class="sidebar-section" id="kpiContainer"></div>
+                <div class="sidebar-section" id="analisis-dinamico"></div>
+                <div id="filter-status" style="display: none;">
+                    <h4>Filtros Activos</h4>
+                    <div id="filter-text"></div>
+                    <button id="clear-filters">Limpiar Filtros</button>
+                </div>
+            </div>
+            <div class="main-content">
+                <div class="chart-container main-chart-container">
+                    <div class="chart-header"><h3>Nivel Educativo por Comunidad</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div>
+                    <div id="mainChart" class="echart-instance"></div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-header"><h3>Distribución por Género</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div>
+                    <div id="generoChart" class="echart-instance"></div>
+                </div>
+            </div>
+        </div>
+        <footer><span>powered by:</span><img src="{{ url_for('static', filename='img/logo_geotactics.png') }}" alt="Logo de Geotactics"></footer>
+    </div>
+<script>
+    const nombreParroquia = "{{ nombre_parroquia }}";
+    let activeFilters = {};
+    const theme = 'dark';
+    const toolboxConfig = { show: true, right: 15, top: 0, feature: { saveAsImage: { show: true, title: 'Guardar' } } };
+    
+    let originalData = { ciudadanos: [] };
+
+    function calculateCounts(data, key) { if (!data) return {}; return data.reduce((acc, item) => { const value = item[key]; if (value) { acc[value] = (acc[value] || 0) + 1; } return acc; }, {}); }
+    
+    async function fetchData() {
+        const url = `/api/formacion/${nombreParroquia.replace(/ /g, '_')}`;
+        try {
+            const response = await fetch(url);
+            const dataArray = await response.json();
+            // ADAPTACIÓN: El API de formación devuelve un arreglo directamente.
+            // Lo envolvemos en un objeto para que coincida con la estructura de los otros perfiles.
+            originalData = { ciudadanos: dataArray };
+            applyFiltersAndRender();
+        } catch (error) { console.error("Error al obtener datos:", error); }
+    }
+    
+    function applyFiltersAndRender() {
+        let filteredCiudadanos = [...originalData.ciudadanos];
+        for (const key in activeFilters) {
+            const filterValue = activeFilters[key];
+            if (filterValue) {
+                filteredCiudadanos = filteredCiudadanos.filter(item => item[key] == filterValue);
+            }
+        }
+        updateDashboard({ ciudadanos: filteredCiudadanos });
+        updateFilterStatus();
+    }
+    
+    function updateDashboard(data) {
+        const ciudadanos = data.ciudadanos || [];
+        
+        const kpis = {
+            total: ciudadanos.length,
+            edad_promedio: ciudadanos.length > 0 ? ciudadanos.reduce((sum, c) => sum + (c.edad || 0), 0) / ciudadanos.filter(c => c.edad).length : 0
+        };
+        document.getElementById('kpiContainer').innerHTML = `<h3>Indicadores</h3>
+            <div class="kpi-card"><div class="kpi-value">${kpis.total.toLocaleString()}</div><div class="kpi-label">Total Personas</div></div>
+            <div class="kpi-card"><div class="kpi-value">${kpis.edad_promedio.toFixed(1)}</div><div class="kpi-label">Edad Promedio</div></div>`;
+        
+        actualizarAnalisisDinamico(ciudadanos);
+        
+        const distGenero = calculateCounts(ciudadanos, 'genero');
+        const mainChartData = processMainChartData(ciudadanos);
+
+        createPieChart('generoChart', 'Género', distGenero, 'genero');
+        createStackedBarChart('mainChart', 'Nivel Educativo', mainChartData, 'nivel_educativo');
+    }
+
+    function actualizarAnalisisDinamico(ciudadanos) {
+        const container = document.getElementById('analisis-dinamico');
+        let html = '<h3>Análisis Dinámico</h3>';
+        if (ciudadanos.length === 0) {
+            html += '<p>No hay datos para la selección actual.</p>';
+            container.innerHTML = html;
+            return;
+        }
+        const nivelCounts = calculateCounts(ciudadanos, 'nivel_educativo');
+        const tipoPrincipal = Object.keys(nivelCounts).reduce((a, b) => nivelCounts[a] > nivelCounts[b] ? a : b, '');
+        
+        html += '<ul class="narrativa-list">';
+        if (tipoPrincipal) {
+            html += `<li>El nivel educativo más frecuente es <strong>${tipoPrincipal}</strong>.</li>`;
+        }
+        const edadPromedio = ciudadanos.reduce((sum, c) => sum + (c.edad || 0), 0) / ciudadanos.filter(c => c.edad).length;
+        html += `<li>La edad promedio de este grupo es de <strong>${edadPromedio.toFixed(1)}</strong> años.</li>`;
+        html += '</ul>';
+        container.innerHTML = html;
+    }
+
+    function processMainChartData(ciudadanos) {
+        const pivot = {};
+        ciudadanos.forEach(c => {
+            const key = `${c.comunidad}|${c.nivel_educativo}`;
+            pivot[key] = (pivot[key] || 0) + 1;
+        });
+        const comunidades = [...new Set(ciudadanos.map(c => c.comunidad))];
+        const tiposNivel = [...new Set(ciudadanos.map(c => c.nivel_educativo))];
+        const series = tiposNivel.map(tipo => ({
+            name: tipo,
+            type: 'bar',
+            stack: 'total',
+            label: { show: true, color: '#fff' },
+            data: comunidades.map(com => pivot[`${com}|${tipo}`] || 0)
+        }));
+        return { series, categories: comunidades, legend: tiposNivel };
+    }
+
+    function createStackedBarChart(elementId, title, chartData, filterKey) {
+        const chartDom = document.getElementById(elementId);
+        if (!chartDom) return;
+        echarts.dispose(chartDom);
+        if (chartData.series.length === 0) { chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles.</h3></div>'; return; }
+        const myChart = echarts.init(chartDom, theme);
+        const option = {
+            backgroundColor: 'transparent',
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            toolbox: toolboxConfig,
+            legend: { data: chartData.legend, textStyle: { color: '#c9d1d9' } },
+            grid: { top: '15%', bottom: '5%', left: '3%', right: '4%', containLabel: true },
+            xAxis: { type: 'category', data: chartData.categories, axisLabel: { color: '#c9d1d9' } },
+            yAxis: { type: 'value', axisLabel: { color: '#c9d1d9' } },
+            series: chartData.series
+        };
+        myChart.setOption(option);
+        myChart.on('click', (params) => {
+            const filterName = params.seriesName;
+            if(activeFilters[filterKey] === filterName) { delete activeFilters[filterKey]; }
+            else { activeFilters[filterKey] = filterName; }
+            applyFiltersAndRender();
+        });
+    }
+
+    function createPieChart(elementId, title, data, filterKey) {
+        const chartDom = document.getElementById(elementId);
+        if (!chartDom) return;
+        echarts.dispose(chartDom);
+        if (!data || Object.keys(data).length === 0) { chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles</h3></div>'; return; }
+        const myChart = echarts.init(chartDom, theme);
+        const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
+        const option = { backgroundColor: 'transparent', tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' }, toolbox: toolboxConfig, series: [{ type: 'pie', radius: ['40%', '70%'], center: ['50%', '45%'], data: chartData, label: { show: false } }] };
+        myChart.setOption(option);
+        myChart.on('click', (params) => {
+            if(activeFilters[filterKey] === params.name) { delete activeFilters[filterKey]; }
+            else { activeFilters[filterKey] = params.name; }
+            applyFiltersAndRender();
+        });
+    }
+    
+    function updateFilterStatus() {
+        const container = document.getElementById('filter-status');
+        const textEl = document.getElementById('filter-text');
+        const hasFilters = Object.values(activeFilters).some(v => v);
+        container.style.display = hasFilters ? 'block' : 'none';
+        if (hasFilters) {
+            textEl.innerHTML = `<ul class="narrativa-list">${Object.entries(activeFilters).filter(([k,v]) => v).map(([k, v]) => `<li><strong>${k}:</strong> ${v}</li>`).join('')}</ul>`;
+        }
+    }
+    
+    document.getElementById('clear-filters').addEventListener('click', () => { 
+        activeFilters = {}; 
+        applyFiltersAndRender(); 
+    });
+    
+    document.addEventListener('DOMContentLoaded', fetchData);
+</script>
+</body>
+</html>
