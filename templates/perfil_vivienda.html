@@ -40,7 +40,11 @@
 <body>
     <div class="main-container">
         <h1>Vivienda y Servicios: {{ nombre_parroquia }}</h1>
-        <nav class="navigation">{% for item in navegacion %}<a href="{{ item.href }}" class="{% if 'vivienda' in item.href %}active{% endif %}">{{ item.texto }}</a>{% endfor %}</nav>
+        <nav class="navigation">
+            {% for item in navegacion %}
+                <a href="{{ item.href }}" class="{% if item.activo %}active{% endif %}">{{ item.texto }}</a>
+            {% endfor %}
+        </nav>
         <div class="page-layout">
             <div class="left-column">
                 <div class="sidebar-section" id="kpiContainer"></div>
@@ -162,36 +166,172 @@
             createStackedBarChart('tipoViviendaChart', 'Tipo de Vivienda por Comunidad', graficoPrincipal, 'comunidad', 'tipo_vivienda');
         }
 
-        function createStackedBarChart(elementId, title, data, catKey, seriesKey) {
-            const chartDom = document.getElementById(elementId);
-            if (!chartDom) return;
-            echarts.dispose(chartDom);
-            if (!data || !data.categories || data.categories.length === 0 || !data.series || data.series.length === 0) {
-                chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles.</h3></div>'; return;
+        // REEMPLAZA ESTA FUNCIÓN EN TODOS TUS PERFILES
+function createStackedBarChart(elementId, title, data, catKey, seriesKey) {
+    const chartDom = document.getElementById(elementId);
+    if (!chartDom) return;
+    echarts.dispose(chartDom);
+
+    if (!data || !data.categories || data.categories.length === 0 || !data.series || data.series.length === 0) {
+        chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles.</h3></div>';
+        return;
+    }
+
+    const myChart = echarts.init(chartDom);
+    const series = data.series.map(s => ({...s, type: 'bar', stack: 'total', label: { show: true, formatter: p => p.value > 0 ? p.value : '' }}));
+    const option = {
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        toolbox: toolboxConfig,
+        legend: { data: data.series.map(s => s.name), top: 'bottom', textStyle: { color: '#c9d1d9' } },
+        grid: { top: '10%', bottom: '15%', left: '3%', right: '4%', containLabel: true },
+        xAxis: { type: 'category', data: data.categories, axisLabel: { color: '#c9d1d9' } },
+        yAxis: { type: 'value', axisLabel: { color: '#c9d1d9' } },
+        series: series
+    };
+    myChart.setOption(option);
+
+    // LÍNEA CLAVE: Hacemos que el gráfico sea responsivo y se ajuste a la ventana.
+    window.addEventListener('resize', () => {
+        myChart.resize();
+    });
+    
+    // Forzamos un redimensionamiento inicial por si acaso
+    setTimeout(() => myChart.resize(), 200);
+}
+
+// REEMPLAZA TAMBIÉN ESTA FUNCIÓN EN TODOS TUS PERFILES
+// REEMPLAZA ESTA FUNCIÓN EN perfil_vivienda.html
+function createStackedBarChart(elementId, title, data, catKey, seriesKey) {
+    console.log(`[DEBUG] Iniciando createStackedBarChart para: ${elementId}`);
+    const chartDom = document.getElementById(elementId);
+    if (!chartDom) {
+        console.error(`[DEBUG] No se encontró el elemento DOM con id: ${elementId}`);
+        return;
+    }
+    echarts.dispose(chartDom);
+
+    if (!data || !data.categories || data.categories.length === 0 || !data.series || data.series.length === 0) {
+        console.warn(`[DEBUG] No hay datos para el gráfico ${elementId}. Se mostrará un mensaje.`);
+        chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles.</h3></div>';
+        return;
+    }
+
+    try {
+        console.log(`[DEBUG] 1. Inicializando ECharts en ${elementId}...`);
+        const myChart = echarts.init(chartDom);
+        console.log(`[DEBUG] 2. Instancia de ECharts creada para ${elementId}.`);
+
+        const series = data.series.map(s => ({...s, type: 'bar', stack: 'total', label: { show: true, formatter: p => p.value > 0 ? p.value : '' }}));
+        const option = {
+            backgroundColor: 'transparent',
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            toolbox: toolboxConfig,
+            legend: { data: data.series.map(s => s.name), top: 'bottom', textStyle: { color: '#c9d1d9' } },
+            grid: { top: '10%', bottom: '15%', left: '3%', right: '4%', containLabel: true },
+            xAxis: { type: 'category', data: data.categories, axisLabel: { color: '#c9d1d9' } },
+            yAxis: { type: 'value', axisLabel: { color: '#c9d1d9' } },
+            series: series
+        };
+
+        console.log(`[DEBUG] 3. Opciones del gráfico generadas para ${elementId}.`);
+        myChart.setOption(option);
+        console.log(`[DEBUG] 4. ¡Gráfico ${elementId} renderizado exitosamente!`);
+
+        window.addEventListener('resize', () => myChart.resize());
+    } catch (e) {
+        console.error(`[DEBUG] Ocurrió un error CATASTRÓFICO en createStackedBarChart para ${elementId}:`, e);
+    }
+}
+
+// REEMPLAZA TAMBIÉN ESTA FUNCIÓN EN perfil_vivienda.html
+// REEMPLAZA ESTA FUNCIÓN EN TODOS TUS PERFILES ESTRELLA
+function createStackedBarChart(elementId, title, data, catKey, seriesKey) {
+    const chartDom = document.getElementById(elementId);
+    if (!chartDom) return;
+    echarts.dispose(chartDom);
+
+    if (!data || !data.categories || data.categories.length === 0 || !data.series || data.series.length === 0) {
+        chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles.</h3></div>';
+        return;
+    }
+
+    const myChart = echarts.init(chartDom);
+    const series = data.series.map(s => ({...s, type: 'bar', stack: 'total', label: { show: true, formatter: p => p.value > 0 ? p.value : '' }}));
+    const option = {
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        toolbox: toolboxConfig,
+        legend: { data: data.series.map(s => s.name), top: 'bottom', textStyle: { color: '#c9d1d9' } },
+        grid: { top: '10%', bottom: '15%', left: '3%', right: '4%', containLabel: true },
+        xAxis: { type: 'category', data: data.categories, axisLabel: { color: '#c9d1d9' } },
+        yAxis: { type: 'value', axisLabel: { color: '#c9d1d9' } },
+        series: series
+    };
+    myChart.setOption(option);
+
+    // LÓGICA DE FILTROS POR CLIC (RESTAURADA)
+    myChart.on('click', (params) => {
+        if (params.seriesName) {
+            activeFilters[`filtro_${catKey}`] = params.name;
+            activeFilters[`filtro_${seriesKey}`] = params.seriesName;
+            applyFiltersAndRender();
+        }
+    });
+
+    // LÓGICA DE RENDERIZADO ROBUSTO
+    window.addEventListener('resize', () => {
+        myChart.resize();
+    });
+    setTimeout(() => myChart.resize(), 200);
+}
+
+// REEMPLAZA TAMBIÉN ESTA FUNCIÓN EN TODOS TUS PERFILES ESTRELLA
+function createPieOrDonutChart(elementId, title, data, filterKey, isDonut) {
+    const chartDom = document.getElementById(elementId);
+    if (!chartDom) return;
+    echarts.dispose(chartDom);
+
+    if (!data || Object.keys(data).length === 0) {
+        chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles</h3></div>';
+        return;
+    }
+
+    const myChart = echarts.init(chartDom);
+    const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
+    const option = {
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        toolbox: toolboxConfig,
+        series: [{
+            type: 'pie',
+            radius: isDonut ? ['40%', '70%'] : '65%',
+            center: ['50%', '45%'],
+            data: chartData,
+            label: { show: true, formatter: '{b}\n({d}%)', fontSize: 11 },
+            labelLine: { show: true }
+        }]
+    };
+    myChart.setOption(option);
+
+    // LÓGICA DE FILTROS POR CLIC (RESTAURADA)
+    if (filterKey) {
+        myChart.on('click', (params) => {
+            if (activeFilters[`filtro_${filterKey}`] === params.name) {
+                delete activeFilters[`filtro_${filterKey}`];
+            } else {
+                activeFilters[`filtro_${filterKey}`] = params.name;
             }
-            const myChart = echarts.init(chartDom, theme);
-            const series = data.series.map(s => ({...s, type: 'bar', stack: 'total', label: { show: true, formatter: p => p.value > 0 ? p.value : '' }}));
-            const option = { backgroundColor: 'transparent', tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } }, toolbox: toolboxConfig, legend: { data: data.series.map(s => s.name), top: 'bottom', textStyle: { color: '#c9d1d9' } }, grid: { top: '10%', bottom: '15%', left: '3%', right: '4%', containLabel: true }, xAxis: { type: 'category', data: data.categories, axisLabel: { color: '#c9d1d9' } }, yAxis: { type: 'value', axisLabel: { color: '#c9d1d9' } }, series: series };
-            myChart.setOption(option);
-            myChart.on('click', (params) => { if (params.seriesName) { activeFilters[`filtro_${catKey}`] = params.name; activeFilters[`filtro_${seriesKey}`] = params.seriesName; applyFiltersAndRender(); } });
-        }
-        function createPieOrDonutChart(elementId, title, data, filterKey, isDonut) {
-            const chartDom = document.getElementById(elementId);
-            if (!chartDom) return;
-            echarts.dispose(chartDom);
-            if (!data || Object.keys(data).length === 0) { chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles</h3></div>'; return; }
-            const myChart = echarts.init(chartDom, theme);
-            const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
-            const option = {
-                backgroundColor: 'transparent', tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' }, toolbox: toolboxConfig,
-                series: [{
-                    type: 'pie', radius: isDonut ? ['40%', '70%'] : '65%', center: ['50%', '45%'], data: chartData,
-                    label: { show: true, formatter: '{b}\n({d}%)', fontSize: 11 }, labelLine: { show: true }
-                }]
-            };
-            myChart.setOption(option);
-            if (filterKey) { myChart.on('click', (params) => { if (activeFilters[`filtro_${filterKey}`] === params.name) { delete activeFilters[`filtro_${filterKey}`]; } else { activeFilters[`filtro_${filterKey}`] = params.name; } applyFiltersAndRender(); }); }
-        }
+            applyFiltersAndRender();
+        });
+    }
+
+    // LÓGICA DE RENDERIZADO ROBUSTO
+    window.addEventListener('resize', () => {
+        myChart.resize();
+    });
+    setTimeout(() => myChart.resize(), 200);
+}
         function updateFilterStatus() {
             const container = document.getElementById('filter-status');
             const textEl = document.getElementById('filter-text');

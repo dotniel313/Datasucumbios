@@ -6,3 +6,9 @@ credentials.json
 
 # Ignorar node_modules completamente
 node_modules/
+
+# Ignorar el archivo de variables de entorno locales
+.env
+
+# Ignorar la carpeta del entorno virtual
+venv/

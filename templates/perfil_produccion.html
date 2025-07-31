@@ -39,7 +39,11 @@
 <body>
     <div class="main-container">
         <h1>Producción Rural: {{ nombre_parroquia }}</h1>
-        <nav class="navigation">{% for item in navegacion %}<a href="{{ item.href }}" class="{% if 'produccion' in item.href %}active{% endif %}">{{ item.texto }}</a>{% endfor %}</nav>
+        <nav class="navigation">
+            {% for item in navegacion %}
+                <a href="{{ item.href }}" class="{% if item.activo %}active{% endif %}">{{ item.texto }}</a>
+            {% endfor %}
+        </nav>
         <div class="page-layout">
             <div class="left-column">
                 <div class="sidebar-section" id="kpiContainer"></div>

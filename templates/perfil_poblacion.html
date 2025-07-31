@@ -40,7 +40,11 @@
 <body>
     <div class="main-container">
         <h1>Población y Diversidad: {{ nombre_parroquia }}</h1>
-        <nav class="navigation">{% for item in navegacion %}<a href="{{ item.href }}" class="{% if 'poblacion' in item.href %}active{% endif %}">{{ item.texto }}</a>{% endfor %}</nav>
+        <nav class="navigation">
+            {% for item in navegacion %}
+                <a href="{{ item.href }}" class="{% if item.activo %}active{% endif %}">{{ item.texto }}</a>
+            {% endfor %}
+        </nav>
         <div class="page-layout">
             <div class="left-column">
                 <div class="sidebar-section" id="kpiContainer"></div>
@@ -124,21 +128,18 @@
             let filteredCiudadanos = [...originalData.ciudadanos];
             let filteredJefes = [...originalData.jefes];
 
-            // --- CORRECCIÓN LÓGICA DE FILTRO DE CONTEXTO ---
-            const ciudadanoIdSet = new Set(originalData.ciudadanos.map(c => c.id_ciudadano));
-            let jefesMaster = originalData.jefes.filter(j => ciudadanoIdSet.has(j.id_ciudadano));
-
             for (const key in activeFilters) {
                 const filterValue = activeFilters[key];
                 const field = key.replace('filtro_', '');
                 
                 const ciudadanoField = field === 'nivel' ? 'nivel_normalizado' : field;
-                filteredCiudadanos = filteredCiudadanos.filter(item => item[ciudadanoField] == filterValue);
+                if (ciudadanoField) {
+                    filteredCiudadanos = filteredCiudadanos.filter(item => item[ciudadanoField] == filterValue);
+                }
             }
             
-            // Filtra los jefes basado en la población ya filtrada
             const filteredCiudadanoIdSet = new Set(filteredCiudadanos.map(c => c.id_ciudadano));
-            filteredJefes = jefesMaster.filter(j => filteredCiudadanoIdSet.has(j.id_ciudadano));
+            filteredJefes = originalData.jefes.filter(j => filteredCiudadanoIdSet.has(j.id_ciudadano));
             
             updateDashboard({ ciudadanos: filteredCiudadanos, jefes: filteredJefes });
             updateFilterStatus();
@@ -147,29 +148,20 @@
         function updateDashboard(data) {
             const ciudadanos = data.ciudadanos || [];
             const jefes = data.jefes || [];
-
             const kpis = { total: ciudadanos.length, edad_promedio: ciudadanos.length > 0 ? ciudadanos.reduce((sum, c) => sum + (c.edad || 0), 0) / ciudadanos.filter(c => c.edad).length : 0 };
             const kpis_hogares = { total: jefes.length };
-
             document.getElementById('kpiContainer').innerHTML = `<h3>Indicadores</h3><div class="kpi-card"><div class="kpi-value">${kpis.total.toLocaleString()}</div><div class="kpi-label">Población Total</div></div><div class="kpi-card"><div class="kpi-value">${kpis_hogares.total.toLocaleString()}</div><div class="kpi-label">Hogares</div></div><div class="kpi-card"><div class="kpi-value">${kpis.edad_promedio.toFixed(1)}</div><div class="kpi-label">Edad Promedio</div></div>`;
             
             const narrativas = [];
-            const poblacionTexto = Object.keys(activeFilters).length > 0 ? `la selección actual` : `la parroquia`;
             if (ciudadanos.length > 0) {
                 const topItem = (data, key) => Object.entries(calculateCounts(data, key)).sort((a,b) => b[1] - a[1])[0] || [null, null];
                 const [genero, cantGenero] = topItem(ciudadanos, 'genero');
-                if (genero) narrativas.push(`El género predominante en ${poblacionTexto} es <b>${genero.toLowerCase()}</b> (${cantGenero} personas).`);
-                const [estadoCivil, cantEstado] = topItem(jefes, 'estado_civil');
-                if (estadoCivil) narrativas.push(`Entre los jefes de hogar, el estado civil más común es <b>${estadoCivil}</b> (${cantEstado} familias).`);
-                const [etnia, cantEtnia] = topItem(ciudadanos, 'etnia');
-                if (etnia) narrativas.push(`La etnia principal es <b>${etnia}</b>, con <b>${cantEtnia}</b> individuos.`);
-                const [nivel, cantNivel] = topItem(ciudadanos, 'nivel_normalizado');
-                if (nivel) narrativas.push(`<b>${cantNivel}</b> personas indican que su nivel de dominio de la lengua es: <b>'${nivel}'</b>.`);
+                if (genero) narrativas.push(`El género predominante es <b>${genero.toLowerCase()}</b> (${cantGenero} personas).`);
             } else {
                 narrativas.push("No hay datos disponibles para la selección actual.");
             }
             document.getElementById('narrativa_list').innerHTML = narrativas.map(item => `<li>${item}</li>`).join('');
-
+            
             const distGenero = calculateCounts(ciudadanos, 'genero');
             const distLengua = calculateCounts(ciudadanos, 'lengua_materna');
             const distNivelLengua = calculateCounts(ciudadanos, 'nivel_normalizado');
@@ -194,36 +186,31 @@
             if (!data || !data.categories || data.categories.length === 0 || !data.series || data.series.length === 0) {
                 chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles.</h3></div>'; return;
             }
-            const myChart = echarts.init(chartDom, theme);
+            const myChart = echarts.init(chartDom);
             const seriesWithOptions = data.series.map(s => ({...s, type: 'bar', stack: 'total', emphasis: { focus: 'series' }, label: { show: true, formatter: (p) => p.value > 0 ? p.value : '', color: '#fff' }}));
             const option = { backgroundColor: 'transparent', tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } }, toolbox: toolboxConfig, legend: { data: data.series.map(s => s.name), top: 'bottom', textStyle: { color: '#c9d1d9' } }, grid: { top: '10%', bottom: '15%', left: '3%', right: '4%', containLabel: true }, xAxis: { type: 'category', data: data.categories, axisLabel: { color: '#c9d1d9', rotate: 30 } }, yAxis: { type: 'value', axisLabel: { color: '#c9d1d9' } }, series: seriesWithOptions };
             myChart.setOption(option);
             myChart.on('click', (params) => { if (params.seriesName) { activeFilters[`filtro_${categoryFilterKey}`] = params.name; activeFilters[`filtro_${seriesFilterKey}`] = params.seriesName; applyFiltersAndRender(); } });
+            window.addEventListener('resize', () => { myChart.resize(); });
+            setTimeout(() => myChart.resize(), 200);
         }
+
         function createPieOrDonutChart(elementId, title, data, filterKey, isDonut) {
             const chartDom = document.getElementById(elementId);
             if (!chartDom) return;
             echarts.dispose(chartDom);
-            if (!data || Object.keys(data).length === 0) { chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles</h3></div>'; return; }
-            const myChart = echarts.init(chartDom, theme);
+            if (!data || Object.keys(data).length === 0) {
+                chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles</h3></div>'; return;
+            }
+            const myChart = echarts.init(chartDom);
             const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
-            const option = {
-                backgroundColor: 'transparent',
-                tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-                toolbox: toolboxConfig,
-                series: [{
-                    type: 'pie',
-                    radius: isDonut ? ['40%', '70%'] : '65%',
-                    center: ['50%', '45%'],
-                    data: chartData,
-                    label: { show: true, formatter: '{b}\n({d}%)', fontSize: 11 },
-                    labelLine: { show: true, length: 8, length2: 8 },
-                    emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' } }
-                }]
-            };
+            const option = { backgroundColor: 'transparent', tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' }, toolbox: toolboxConfig, series: [{ type: 'pie', radius: isDonut ? ['40%', '70%'] : '65%', center: ['50%', '45%'], data: chartData, label: { show: true, formatter: '{b}\n({d}%)', fontSize: 11 }, labelLine: { show: true, length: 8, length2: 8 }, emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' } } }] };
             myChart.setOption(option);
             if (filterKey) { myChart.on('click', (params) => { if (activeFilters[`filtro_${filterKey}`] === params.name) { delete activeFilters[`filtro_${filterKey}`]; } else { activeFilters[`filtro_${filterKey}`] = params.name; } applyFiltersAndRender(); }); }
+            window.addEventListener('resize', () => { myChart.resize(); });
+            setTimeout(() => myChart.resize(), 200);
         }
+
         function updateFilterStatus() {
             const container = document.getElementById('filter-status');
             const textEl = document.getElementById('filter-text');

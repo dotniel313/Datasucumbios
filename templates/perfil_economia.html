@@ -31,16 +31,23 @@
         .no-data-message { display: flex; justify-content: center; align-items: center; height: 100%; color: #8b949e; font-style: italic; }
         footer { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 50px; padding-top: 20px; border-top: 1px solid #30363d; color: #8b949e;}
         footer img { max-height: 40px; opacity: 0.8; }
+        .narrativa-list { list-style: none; padding: 0; margin: 0; text-align: left; }
+        .narrativa-list li { margin-bottom: 8px; }
     </style>
     <title>Economía de {{ nombre_parroquia }}</title>
 </head>
 <body>
     <div class="main-container">
         <h1>Economía: {{ nombre_parroquia }}</h1>
-        <nav class="navigation">{% for item in navegacion %}<a href="{{ item.href }}" class="{% if 'economia' in item.href %}active{% endif %}">{{ item.texto }}</a>{% endfor %}</nav>
+        <nav class="navigation">
+            {% for item in navegacion %}
+                <a href="{{ item.href }}" class="{% if item.activo %}active{% endif %}">{{ item.texto }}</a>
+            {% endfor %}
+        </nav>
         <div class="page-layout">
             <div class="left-column">
                 <div class="sidebar-section" id="kpiContainer"></div>
+                <div class="sidebar-section" id="analisis-dinamico"></div>
                 <div class="sidebar-section">
                     <h3>Filtros</h3>
                     <label for="filtroComunidad" class="kpi-label">Comunidad</label>
@@ -68,130 +75,155 @@
         </div>
         <footer><span>powered by:</span><img src="{{ url_for('static', filename='img/logo_geotactics.png') }}" alt="Logo de Geotactics"></footer>
     </div>
-    <script>
-        const nombreParroquia = "{{ nombre_parroquia }}";
-        let activeFilters = {};
-        const theme = 'dark';
-        const toolboxConfig = { show: true, right: 15, top: 0, feature: { saveAsImage: { show: true, title: 'Guardar' }, dataView: { show: true, title: 'Ver Datos' } } };
-        
-        let originalData = { ciudadanos: [] };
+<script>
+    const nombreParroquia = "{{ nombre_parroquia }}";
+    let activeFilters = {};
+    const theme = 'dark';
+    const toolboxConfig = { show: true, right: 15, top: 0, feature: { saveAsImage: { show: true, title: 'Guardar' }, dataView: { show: true, title: 'Ver Datos' } } };
+    
+    let originalData = { ciudadanos: [] };
 
-        function calculateCounts(data, key) { if (!data) return {}; return data.reduce((acc, item) => { const value = item[key]; if (value) { acc[value] = (acc[value] || 0) + 1; } return acc; }, {}); }
-        function getAgeGroup(edad) {
-            if (edad === null || edad === undefined) return 'S/D';
-            if (edad <= 9) return "0-9"; if (edad <= 19) return "10-19"; if (edad <= 29) return "20-29";
-            if (edad <= 39) return "30-39"; if (edad <= 49) return "40-49"; if (edad <= 59) return "50-59";
-            return "60+";
-        }
-        
-        async function fetchData() {
-            const url = `/api/economia/${nombreParroquia.replace(/ /g, '_')}`;
-            try {
-                const response = await fetch(url);
-                originalData = await response.json();
-                originalData.ciudadanos.forEach(c => { c.grupo_edad = getAgeGroup(c.edad); });
-                populateDropdowns();
-                applyFiltersAndRender();
-            } catch (error) { console.error("Error al obtener datos:", error); }
-        }
+    function calculateCounts(data, key) { if (!data) return {}; return data.reduce((acc, item) => { const value = item[key]; if (value) { acc[value] = (acc[value] || 0) + 1; } return acc; }, {}); }
+    function getAgeGroup(edad) {
+        if (edad === null || edad === undefined) return 'S/D';
+        if (edad <= 9) return "0-9"; if (edad <= 19) return "10-19"; if (edad <= 29) return "20-29";
+        if (edad <= 39) return "30-39"; if (edad <= 49) return "40-49"; if (edad <= 59) return "50-59";
+        return "60+";
+    }
+    
+    async function fetchData() {
+        const url = `/api/economia/${nombreParroquia.replace(/ /g, '_')}`;
+        try {
+            const response = await fetch(url);
+            originalData = await response.json();
+            originalData.ciudadanos.forEach(c => { c.grupo_edad = getAgeGroup(c.edad); });
+            populateDropdowns();
+            applyFiltersAndRender();
+        } catch (error) { console.error("Error al obtener datos:", error); }
+    }
 
-        function populateDropdowns() {
-            const comunidades = [...new Set(originalData.ciudadanos.map(c => c.comunidad).filter(Boolean))].sort();
-            const gruposEdad = [...new Set(originalData.ciudadanos.map(c => c.grupo_edad).filter(Boolean))].sort();
-            const comunidadSelect = document.getElementById('filtroComunidad');
-            const edadSelect = document.getElementById('filtroEdad');
-            comunidadSelect.innerHTML = '<option value="">Todas</option>';
-            edadSelect.innerHTML = '<option value="">Todos</option>';
-            comunidades.forEach(opt => comunidadSelect.add(new Option(opt, opt)));
-            gruposEdad.forEach(opt => edadSelect.add(new Option(opt, opt)));
-        }
-        
-        function applyFiltersAndRender() {
-            let filteredCiudadanos = [...originalData.ciudadanos];
-            const comunidad = document.getElementById('filtroComunidad').value;
-            const grupoEdad = document.getElementById('filtroEdad').value;
-            if (comunidad) activeFilters.filtro_comunidad = comunidad; else delete activeFilters.filtro_comunidad;
-            if (grupoEdad) activeFilters.filtro_grupo_edad = grupoEdad; else delete activeFilters.filtro_grupo_edad;
-            for (const key in activeFilters) {
-                const filterValue = activeFilters[key];
-                const field = key.replace('filtro_', '');
-                if (filterValue) {
-                    filteredCiudadanos = filteredCiudadanos.filter(item => item[field] == filterValue);
-                }
-            }
-            updateDashboard({ ciudadanos: filteredCiudadanos });
-            updateFilterStatus();
-        }
-        
-        function updateDashboard(data) {
-            const ciudadanos = data.ciudadanos || [];
-            const kpis = {
-                seleccion: ciudadanos.length,
-                edad_promedio: ciudadanos.length > 0 ? ciudadanos.reduce((sum, c) => sum + (c.edad || 0), 0) / ciudadanos.filter(c => c.edad).length : 0
-            };
-            document.getElementById('kpiContainer').innerHTML = `<h3>Indicadores</h3>
-                <div class="kpi-card"><div class="kpi-value">${kpis.seleccion.toLocaleString()}</div><div class="kpi-label">Población en Selección</div></div>
-                <div class="kpi-card"><div class="kpi-value">${kpis.edad_promedio.toFixed(1)}</div><div class="kpi-label">Edad Promedio</div></div>`;
-            
-            const distGenero = calculateCounts(ciudadanos, 'genero');
-            const actividadCounts = calculateCounts(ciudadanos, 'actividad_economica');
-            
-            createPieOrDonutChart('generoChart', 'Género', distGenero, 'genero', true);
-            createHorizontalBarChart('actividadChart', 'Actividad Económica', actividadCounts, 'actividad_economica');
-        }
-        
-        function createHorizontalBarChart(elementId, title, data, filterKey) {
-            const chartDom = document.getElementById(elementId);
-            if (!chartDom) return;
-            echarts.dispose(chartDom);
-            if (!data || Object.keys(data).length === 0) { chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles.</h3></div>'; return; }
-            const myChart = echarts.init(chartDom, theme);
-            let chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
-            chartData.sort((a, b) => a.value - b.value);
-            const option = {
-                backgroundColor: 'transparent',
-                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-                toolbox: toolboxConfig,
-                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-                xAxis: { type: 'value' },
-                yAxis: { type: 'category', data: chartData.map(item => item.name), axisLabel: { interval: 0, color: '#c9d1d9' } },
-                series: [{ name: title, type: 'bar', data: chartData.map(item => item.value), label: { show: true, position: 'right', color: '#c9d1d9' } }]
-            };
-            myChart.setOption(option);
-            myChart.on('click', (params) => { const filterName = params.name; if (activeFilters[`filtro_${filterKey}`] === filterName) { delete activeFilters[`filtro_${filterKey}`]; } else { activeFilters[`filtro_${filterKey}`] = filterName; } applyFiltersAndRender(); });
-        }
-
-        function createPieOrDonutChart(elementId, title, data, filterKey, isDonut) {
-            const chartDom = document.getElementById(elementId);
-            if (!chartDom) return;
-            echarts.dispose(chartDom);
-            if (!data || Object.keys(data).length === 0) { chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles</h3></div>'; return; }
-            const myChart = echarts.init(chartDom, theme);
-            const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
-            const option = { backgroundColor: 'transparent', tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' }, toolbox: toolboxConfig, series: [{ type: 'pie', radius: isDonut ? ['40%', '70%'] : '65%', center: ['50%', '45%'], data: chartData, label: { show: false } }] };
-            myChart.setOption(option);
-            myChart.on('click', (params) => { if (activeFilters[`filtro_${filterKey}`] === params.name) { delete activeFilters[`filtro_${filterKey}`]; } else { activeFilters[`filtro_${filterKey}`] = params.name; } applyFiltersAndRender(); });
-        }
-        
-        function updateFilterStatus() {
-            const container = document.getElementById('filter-status');
-            const textEl = document.getElementById('filter-text');
-            const hasFilters = Object.values(activeFilters).some(v => v);
-            container.style.display = hasFilters ? 'block' : 'none';
-            if (hasFilters) {
-                textEl.innerHTML = `<ul class="narrativa-list" style="margin:0; padding:0;">${Object.entries(activeFilters).filter(([k,v]) => v).map(([k, v]) => `<li><strong>${k.replace('filtro_', '')}:</strong> ${v}</li>`).join('')}</ul>`;
+    function populateDropdowns() {
+        const comunidades = [...new Set(originalData.ciudadanos.map(c => c.comunidad).filter(Boolean))].sort();
+        const gruposEdad = [...new Set(originalData.ciudadanos.map(c => c.grupo_edad).filter(Boolean))].sort();
+        const comunidadSelect = document.getElementById('filtroComunidad');
+        const edadSelect = document.getElementById('filtroEdad');
+        comunidadSelect.innerHTML = '<option value="">Todas</option>';
+        edadSelect.innerHTML = '<option value="">Todos</option>';
+        comunidades.forEach(opt => comunidadSelect.add(new Option(opt, opt)));
+        gruposEdad.forEach(opt => edadSelect.add(new Option(opt, opt)));
+    }
+    
+    function applyFiltersAndRender() {
+        let filteredCiudadanos = [...originalData.ciudadanos];
+        const comunidad = document.getElementById('filtroComunidad').value;
+        const grupoEdad = document.getElementById('filtroEdad').value;
+        if (comunidad) activeFilters.filtro_comunidad = comunidad; else delete activeFilters.filtro_comunidad;
+        if (grupoEdad) activeFilters.filtro_grupo_edad = grupoEdad; else delete activeFilters.filtro_grupo_edad;
+        for (const key in activeFilters) {
+            const filterValue = activeFilters[key];
+            const field = key.replace('filtro_', '');
+            if (filterValue) {
+                filteredCiudadanos = filteredCiudadanos.filter(item => item[field] == filterValue);
             }
         }
+        updateDashboard({ ciudadanos: filteredCiudadanos });
+        updateFilterStatus();
+    }
+    
+    function updateDashboard(data) {
+        const ciudadanos = data.ciudadanos || [];
+        const kpis = {
+            seleccion: ciudadanos.length,
+            edad_promedio: ciudadanos.length > 0 ? ciudadanos.reduce((sum, c) => sum + (c.edad || 0), 0) / ciudadanos.filter(c => c.edad).length : 0
+        };
+        document.getElementById('kpiContainer').innerHTML = `<h3>Indicadores</h3>
+            <div class="kpi-card"><div class="kpi-value">${kpis.seleccion.toLocaleString()}</div><div class="kpi-label">Población en Selección</div></div>
+            <div class="kpi-card"><div class="kpi-value">${kpis.edad_promedio.toFixed(1)}</div><div class="kpi-label">Edad Promedio</div></div>`;
         
-        document.getElementById('filtroComunidad').addEventListener('change', applyFiltersAndRender);
-        document.getElementById('filtroEdad').addEventListener('change', applyFiltersAndRender);
-        document.getElementById('clear-filters').addEventListener('click', () => { 
-            activeFilters = {}; 
-            document.getElementById('filtroComunidad').value = '';
-            document.getElementById('filtroEdad').value = '';
-            applyFiltersAndRender(); 
-        });
-        document.addEventListener('DOMContentLoaded', fetchData);
-    </script>
+        const distGenero = calculateCounts(ciudadanos, 'genero');
+        const actividadCounts = calculateCounts(ciudadanos, 'actividad_economica');
+        
+        actualizarAnalisisDinamico(ciudadanos);
+        
+        createPieOrDonutChart('generoChart', 'Género', distGenero, 'genero', true);
+        createHorizontalBarChart('actividadChart', 'Actividad Económica', actividadCounts, 'actividad_economica');
+    }
+
+    function actualizarAnalisisDinamico(ciudadanos) {
+        const container = document.getElementById('analisis-dinamico');
+        let html = '<h3>Análisis Dinámico</h3>';
+        if (ciudadanos.length === 0) {
+            html += '<p>No hay datos para la selección actual.</p>';
+            container.innerHTML = html;
+            return;
+        }
+        const actividadCounts = calculateCounts(ciudadanos, 'actividad_economica');
+        const actividadPrincipal = Object.keys(actividadCounts).reduce((a, b) => actividadCounts[a] > actividadCounts[b] ? a : b, '');
+        
+        html += '<ul class="narrativa-list">';
+        if (actividadPrincipal) {
+            const totalEnActividad = actividadCounts[actividadPrincipal];
+            const porcentaje = ((totalEnActividad / ciudadanos.length) * 100).toFixed(1);
+            html += `<li>La actividad principal es <strong>${actividadPrincipal}</strong>, ocupando al <strong>${porcentaje}%</strong> de la población en la selección.</li>`;
+        }
+        const edadPromedio = ciudadanos.reduce((sum, c) => sum + (c.edad || 0), 0) / ciudadanos.filter(c => c.edad).length;
+        html += `<li>La edad promedio de este grupo es de <strong>${edadPromedio.toFixed(1)}</strong> años.</li>`;
+        html += '</ul>';
+        container.innerHTML = html;
+    }
+    
+    function createHorizontalBarChart(elementId, title, data, filterKey) {
+        const chartDom = document.getElementById(elementId);
+        if (!chartDom) return;
+        echarts.dispose(chartDom);
+        if (!data || Object.keys(data).length === 0) { chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles.</h3></div>'; return; }
+        const myChart = echarts.init(chartDom, theme);
+        let chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
+        chartData.sort((a, b) => a.value - b.value);
+        const option = {
+            backgroundColor: 'transparent',
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            toolbox: toolboxConfig,
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'value' },
+            yAxis: { type: 'category', data: chartData.map(item => item.name), axisLabel: { interval: 0, color: '#c9d1d9' } },
+            series: [{ name: title, type: 'bar', data: chartData.map(item => item.value), label: { show: true, position: 'right', color: '#c9d1d9' } }]
+        };
+        myChart.setOption(option);
+        myChart.on('click', (params) => { const filterName = params.name; if (activeFilters[`filtro_${filterKey}`] === filterName) { delete activeFilters[`filtro_${filterKey}`]; } else { activeFilters[`filtro_${filterKey}`] = filterName; } applyFiltersAndRender(); });
+    }
+
+    function createPieOrDonutChart(elementId, title, data, filterKey, isDonut) {
+        const chartDom = document.getElementById(elementId);
+        if (!chartDom) return;
+        echarts.dispose(chartDom);
+        if (!data || Object.keys(data).length === 0) { chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles</h3></div>'; return; }
+        const myChart = echarts.init(chartDom, theme);
+        const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
+        const option = { backgroundColor: 'transparent', tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' }, toolbox: toolboxConfig, series: [{ type: 'pie', radius: isDonut ? ['40%', '70%'] : '65%', center: ['50%', '45%'], data: chartData, label: { show: false } }] };
+        myChart.setOption(option);
+        myChart.on('click', (params) => { if (activeFilters[`filtro_${filterKey}`] === params.name) { delete activeFilters[`filtro_${filterKey}`]; } else { activeFilters[`filtro_${filterKey}`] = params.name; } applyFiltersAndRender(); });
+    }
+    
+    function updateFilterStatus() {
+        const container = document.getElementById('filter-status');
+        const textEl = document.getElementById('filter-text');
+        const hasFilters = Object.values(activeFilters).some(v => v);
+        container.style.display = hasFilters ? 'block' : 'none';
+        if (hasFilters) {
+            textEl.innerHTML = `<ul class="narrativa-list" style="margin:0; padding:0;">${Object.entries(activeFilters).filter(([k,v]) => v).map(([k, v]) => `<li><strong>${k.replace('filtro_', '')}:</strong> ${v}</li>`).join('')}</ul>`;
+        }
+    }
+    
+    document.getElementById('filtroComunidad').addEventListener('change', applyFiltersAndRender);
+    document.getElementById('filtroEdad').addEventListener('change', applyFiltersAndRender);
+    document.getElementById('clear-filters').addEventListener('click', () => { 
+        activeFilters = {}; 
+        document.getElementById('filtroComunidad').value = '';
+        document.getElementById('filtroEdad').value = '';
+        applyFiltersAndRender(); 
+    });
+    document.addEventListener('DOMContentLoaded', fetchData);
+</script>
 </body>
 </html>

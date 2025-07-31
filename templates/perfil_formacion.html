@@ -80,12 +80,10 @@
     async function fetchData() {
         const url = `/api/formacion/${nombreParroquia.replace(/ /g, '_')}`;
         try {
+            // ESTE ES EL CÓDIGO CORRECTO
             const response = await fetch(url);
-            const dataArray = await response.json();
-            // ADAPTACIÓN: El API de formación devuelve un arreglo directamente.
-            // Lo envolvemos en un objeto para que coincida con la estructura de los otros perfiles.
-            originalData = { ciudadanos: dataArray };
-            applyFiltersAndRender();
+            originalData = await response.json(); // Asigna directamente la respuesta del API
+            applyFiltersAndRender();;
         } catch (error) { console.error("Error al obtener datos:", error); }
     }
     
