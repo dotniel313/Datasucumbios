@@ -20,6 +20,8 @@
         .page-layout { display: grid; grid-template-columns: 1fr 3.5fr; gap: 30px; align-items: start; }
         .left-column { display: flex; flex-direction: column; gap: 30px; position: sticky; top: 2em; }
         .sidebar-section { background-color: #161b22; border-radius: 8px; padding: 20px; border: 1px solid #30363d; }
+        .chart-container { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; position: relative; }
+        #map { width: 100%; height: 100%; border-radius: 8px; }
         .filtro-desplegable { width: 100%; padding: 10px; background-color: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; }
         #clear-filters { width:100%; padding: 8px; margin-top: 15px; background-color: #f9826c; color: #0d1117; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .kpi-card { text-align: center; margin-bottom: 15px; }
@@ -27,11 +29,23 @@
         .kpi-label { font-size: 1em; color: #8b949e; text-align: center; }
         .narrativa-list { list-style: none; padding: 0; margin: 0; }
         .narrativa-list li { background-color: #0d1117; border-left: 2px solid #58a6ff; padding: 10px; margin-bottom: 8px; border-radius: 4px; font-size: 0.9em; }
-        .chart-container { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
-        #map { width: 100%; height: 100%; border-radius: 8px; }
         footer { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 50px; padding-top: 20px; border-top: 1px solid #30363d; }
-        /* Corrección para el tamaño del logo */
         footer img { max-height: 40px; }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(13, 17, 23, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            border-radius: 8px;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+        }
     </style>
 </head>
 <body>
@@ -84,7 +98,10 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script>
         const nombreParroquia = "{{ nombre_parroquia }}";
-        let allViviendas = [], currentlyDisplayedData = [], map, clusterGroup;
+        let allViviendas = [];
+        let currentlyDisplayedData = [];
+        let map;
+        let clusterGroup;
 
         function updateFilterStatus() {
             const container = document.getElementById('filter-status');
@@ -148,13 +165,23 @@
             currentlyDisplayedData = viviendasFiltradas;
             const colors = {}; let colorIndex = 0;
             const palette = ['#4CAF50', '#FF9800', '#03A9F4', '#E91E63', '#9C27B0', '#FFC107', '#00BCD4', '#8BC34A', '#FF5722', '#009688'];
+            
             viviendasFiltradas.forEach(v => {
-                if (!v.lat || !v.lng || isNaN(v.lat) || isNaN(v.lng)) return;
+                // SUGERENCIA 'b': Validación de Coordenadas Mejorada
+                if (typeof v.lat !== 'number' || typeof v.lng !== 'number' ||
+                    isNaN(v.lat) || isNaN(v.lng) ||
+                    v.lat < -90 || v.lat > 90 ||
+                    v.lng < -180 || v.lng > 180) {
+                    console.warn('Coordenadas inválidas y omitidas:', v);
+                    return;
+                }
+                
                 const color = colors[v.comunidad] || (colors[v.comunidad] = palette[colorIndex++ % palette.length]);
                 const marker = L.circleMarker([v.lat, v.lng], { radius: 6, fillColor: color, color: '#ccc', weight: 1, opacity: 1, fillOpacity: 0.8 });
                 marker.bindPopup(`<b>Comunidad:</b> ${v.comunidad || 'Sin datos'}<br><b>Barrio:</b> ${v.barrio || 'Sin datos'}`);
                 clusterGroup.addLayer(marker);
             });
+
             if (viviendasFiltradas.length > 1) {
                 const bounds = L.featureGroup(clusterGroup.getLayers()).getBounds();
                 if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
@@ -163,12 +190,14 @@
             } else {
                 map.setView([-0.5, -76.9], 9);
             }
+            
             const legend = document.getElementById('legend');
             if (legend) {
                 legend.innerHTML = Object.entries(colors).sort((a,b) => a[0].localeCompare(b[0])).map(([comunidad, color]) => `
                     <div style="margin-bottom: 4px;"><span style="display:inline-block;width:12px;height:12px;background:${color};border-radius:50%;margin-right:8px;vertical-align:middle;"></span>${comunidad}</div>
                 `).join('');
             }
+
             actualizarAnalisisDinamico(viviendasFiltradas);
             refreshDynamicData();
             updateFilterStatus();
@@ -192,30 +221,52 @@
         }
     
         async function initializeMap() {
-            map = L.map('map').setView([-0.5, -76.9], 9);
-            clusterGroup = L.markerClusterGroup();
-            map.addLayer(clusterGroup);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap',
-                maxZoom: 18
-            }).addTo(map);
+            const mapContainer = document.getElementById('map').parentElement;
+
+            // SUGERENCIA 'd': Lógica de Carga (Mostrar)
+            const loadingEl = document.createElement('div');
+            loadingEl.className = 'loading-overlay';
+            loadingEl.innerHTML = `<div style="color:#58a6ff; font-size: 1.2em;">Cargando datos del mapa...</div>`;
+            mapContainer.appendChild(loadingEl);
 
             try {
-                const response = await fetch(`/api/territorio/{{ nombre_parroquia.replace(' ', '_') }}`);
+                // SUGERENCIA de investigación: Añadir maxZoom a L.map
+                map = L.map('map', { maxZoom: 18 }).setView([-0.5, -76.9], 9);
+                
+                clusterGroup = L.markerClusterGroup();
+                map.addLayer(clusterGroup);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap',
+                    maxZoom: 18
+                }).addTo(map);
+                
+                // SUGERENCIA 'a': Manejo de Nombres en la URL
+                const nombreParroquiaAPI = "{{ nombre_parroquia|replace(' ', '_')|urlencode }}";
+                const response = await fetch(`/api/territorio/${nombreParroquiaAPI}`);
+                
                 if (!response.ok) throw new Error(`Error HTTP ${response.status}`);
                 const data = await response.json();
                 allViviendas = data.viviendas || [];
+                
                 populateCommunityFilter(allViviendas);
                 displayFilteredMarkers();
+                
                 map.on('moveend', refreshDynamicData);
                 document.getElementById('comunidad-filtro').addEventListener('change', displayFilteredMarkers);
                 document.getElementById('clear-filters').addEventListener('click', () => {
                     document.getElementById('comunidad-filtro').value = 'Todas';
                     displayFilteredMarkers();
                 });
+
             } catch (error) {
-                console.error("Error al obtener datos del territorio:", error);
-                document.getElementById('kpiContainer').innerHTML = "<h3>Error al cargar datos</h3><p>No se pudo conectar con el servidor.</p>";
+                console.error("Error al inicializar el mapa:", error);
+                loadingEl.innerHTML = `<div style="color:#f9826c;">Error al cargar los datos.</div>`;
+            } finally {
+                // SUGERENCIA 'd': Lógica de Carga (Ocultar)
+                setTimeout(() => {
+                    if (loadingEl) loadingEl.remove();
+                }, 500);
             }
         }
     

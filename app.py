@@ -36,7 +36,6 @@ def generar_navegacion(parroquia_actual, perfil_activo):
         {"url": "vivienda", "texto": "Vivienda"}, {"url": "produccion", "texto": "Producción"}, 
         {"url": "economia", "texto": "Economía"}, {"url": "salud", "texto": "Salud"}, 
         {"url": "discapacidad", "texto": "Discapacidad"}, {"url": "formacion", "texto": "Formación"},
-        {"url": "prueba", "texto": "Prueba"}
         # Si tienes más perfiles, añádelos aquí
     ]
     navegacion = []
@@ -97,12 +96,6 @@ def perfil_discapacidad_page(nombre_parroquia):
 def perfil_formacion_page(nombre_parroquia):
     nombre_formateado, navegacion = generar_navegacion_para_ruta(nombre_parroquia, 'formacion')
     return render_template('perfil_formacion.html', nombre_parroquia=nombre_formateado, navegacion=navegacion)
-
-# Añade esta ruta de página
-@app.route("/prueba/<nombre_parroquia>")
-def perfil_prueba_page(nombre_parroquia="Aguas_Negras"):
-    nombre_formateado, navegacion = generar_navegacion_para_ruta(nombre_parroquia, 'prueba')
-    return render_template('perfil_prueba.html', nombre_parroquia=nombre_formateado, navegacion=navegacion)
 
 # =================================================================
 # RUTAS DE API (JSON)
@@ -209,25 +202,7 @@ def api_formacion(parroquia):
         data = execute_query(conn, query, (parroquia.replace('_', ' '),))
         return jsonify({"ciudadanos": data})
     finally:
-        if conn: conn.close()
-
- # Añade esta ruta de API
-@app.route('/api/prueba/<parroquia>')
-def api_prueba(parroquia):
-    # Reutilizamos la lógica del territorio que sabemos que funciona
-    conn = get_db_connection()
-    try:
-        query = """
-            SELECT trim(split_part(trim(v.ubicacion, '()'), ',', 2))::float AS lng,
-                   split_part(trim(v.ubicacion, '()'), ',', 1)::float AS lat,
-                   c.barrio, c.comunidad
-            FROM public.viviendas v JOIN public.ciudadanos c ON c.id_ciudadano = split_part(v.id_ciudadano, ':', 1)
-            WHERE c.parroquia ILIKE %s AND v.ubicacion IS NOT NULL AND v.ubicacion != '' AND v.ubicacion LIKE '%%,%%';
-        """
-        data = execute_query(conn, query, (parroquia.replace('_', ' '),))
-        return jsonify({"viviendas": data})
-    finally:
-        if conn: conn.close()       
+        if conn: conn.close()    
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
