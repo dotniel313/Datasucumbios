@@ -120,11 +120,12 @@ def perfil_formacion_page(nombre_parroquia):
 def api_territorio(parroquia):
     conn = get_db_connection()
     try:
+        # Consulta SQL corregida: se cambia v.barrio por c.barrio
         query = """
             SELECT
                 trim(split_part(trim(v.ubicacion, '()'), ',', 2))::float AS lng,
                 split_part(trim(v.ubicacion, '()'), ',', 1)::float AS lat,
-                v.barrio,
+                c.barrio,
                 c.comunidad
             FROM
                 public.viviendas v
