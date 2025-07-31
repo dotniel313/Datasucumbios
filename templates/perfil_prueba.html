@@ -201,7 +201,7 @@
             }).addTo(map);
 
             try {
-                const response = await fetch(`/api/territorio/{{ nombre_parroquia.replace(' ', '_') }}`);
+                const response = await fetch(`/api/prueba/{{ nombre_parroquia.replace(' ', '_') }}`);
                 if (!response.ok) throw new Error(`Error HTTP ${response.status}`);
                 const data = await response.json();
                 allViviendas = data.viviendas || [];
