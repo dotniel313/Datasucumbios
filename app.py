@@ -1,6 +1,5 @@
 # /--------------------------------------------------------------------
-# | @version: 25.8.3 (Final, Completo y Consolidado)
-# | @description: Versión final con todas las rutas y correcciones.
+# | @version: 25.8.4 (Versión Final, Estandarizada a /territorio)
 # \--------------------------------------------------------------------
 import os
 import psycopg2
@@ -9,16 +8,8 @@ from flask import Flask, render_template, jsonify
 import traceback
 
 app = Flask(__name__)
-
-# --- CONFIGURACIÓN CLAVE ---
-# Esto fuerza a Flask a recargar los archivos de plantilla cada vez, evitando la caché.
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-
 SUPABASE_CONNECTION_STRING = "postgresql://postgres.yfgcitusasicycngjets:$U._fMEHa6%40gqsD@aws-0-sa-east-1.pooler.supabase.com:6543/postgres"
-
-# =================================================================
-# FUNCIONES DE AYUDA (Helpers)
-# =================================================================
 
 def get_db_connection():
     return psycopg2.connect(SUPABASE_CONNECTION_STRING)
@@ -35,24 +26,13 @@ def get_age_group_sql(column_name):
         WHEN {column_name} <= 59 THEN '50-59' ELSE '60+' END"""
 
 def generar_navegacion(parroquia_actual, perfil_activo):
+    # CORREGIDO: Estandarizado a "territorio"
     perfiles = [
-        {"url": "territorial", "texto": "Territorial"},
-        {"url": "poblacion", "texto": "Población"},
-        {"url": "vivienda", "texto": "Vivienda"},
-        {"url": "produccion", "texto": "Producción"},
-        {"url": "economia", "texto": "Economía"},
-        {"url": "salud", "texto": "Salud"},
-        {"url": "discapacidad", "texto": "Discapacidad"},
-        {"url": "formacion", "texto": "Formación"},
-
-        # --- AÑADE AQUÍ TUS OTROS PERFILES ---
-        # Sigue este formato: {"url": "nombre-en-la-url", "texto": "Texto del Botón"}
-        # Por ejemplo:
-        # {"url": "turismo", "texto": "Turismo"},
-        # {"url": "seguridad", "texto": "Seguridad"}
-        # -----------------------------------------
+        {"url": "territorio", "texto": "Territorio"}, {"url": "poblacion", "texto": "Población"}, 
+        {"url": "vivienda", "texto": "Vivienda"}, {"url": "produccion", "texto": "Producción"}, 
+        {"url": "economia", "texto": "Economía"}, {"url": "salud", "texto": "Salud"}, 
+        {"url": "discapacidad", "texto": "Discapacidad"}, {"url": "formacion", "texto": "Formación"}
     ]
-    
     navegacion = []
     for perfil in perfiles:
         navegacion.append({
@@ -67,14 +47,11 @@ def generar_navegacion_para_ruta(parroquia, perfil_activo):
     navegacion_items = generar_navegacion(nombre_parroquia_formateado, perfil_activo)
     return nombre_parroquia_formateado, navegacion_items
 
-# =================================================================
-# RUTAS DE PÁGINAS (HTML)
-# =================================================================
-
-@app.route("/territorial/<nombre_parroquia>")
-def perfil_territorial_page(nombre_parroquia="Aguas_Negras"):
-    nombre_formateado, navegacion = generar_navegacion_para_ruta(nombre_parroquia, 'territorial')
-    return render_template('perfil_territorial.html', nombre_parroquia=nombre_formateado, navegacion=navegacion)
+# --- RUTAS DE PÁGINAS CORREGIDAS ---
+@app.route("/territorio/<nombre_parroquia>")
+def perfil_territorio_page(nombre_parroquia="Aguas_Negras"):
+    nombre_formateado, navegacion = generar_navegacion_para_ruta(nombre_parroquia, 'territorio')
+    return render_template('perfil_territorio.html', nombre_parroquia=nombre_formateado, navegacion=navegacion)
 
 @app.route("/")
 @app.route("/poblacion/<nombre_parroquia>")
@@ -82,6 +59,7 @@ def perfil_poblacion_page(nombre_parroquia="Aguas_Negras"):
     nombre_formateado, navegacion = generar_navegacion_para_ruta(nombre_parroquia, 'poblacion')
     return render_template('perfil_poblacion.html', nombre_parroquia=nombre_formateado, navegacion=navegacion)
 
+# ... (el resto de las rutas de página son iguales) ...
 @app.route("/vivienda/<nombre_parroquia>")
 def perfil_vivienda_page(nombre_parroquia):
     nombre_formateado, navegacion = generar_navegacion_para_ruta(nombre_parroquia, 'vivienda')
@@ -111,39 +89,30 @@ def perfil_discapacidad_page(nombre_parroquia):
 def perfil_formacion_page(nombre_parroquia):
     nombre_formateado, navegacion = generar_navegacion_para_ruta(nombre_parroquia, 'formacion')
     return render_template('perfil_formacion.html', nombre_parroquia=nombre_formateado, navegacion=navegacion)
-
-# =================================================================
-# RUTAS DE API (JSON)
-# =================================================================
-
+    
+# --- RUTAS DE API ---
 @app.route('/api/territorio/<parroquia>')
 def api_territorio(parroquia):
     conn = get_db_connection()
     try:
-        # Consulta SQL corregida: se cambia v.barrio por c.barrio
         query = """
             SELECT
                 trim(split_part(trim(v.ubicacion, '()'), ',', 2))::float AS lng,
                 split_part(trim(v.ubicacion, '()'), ',', 1)::float AS lat,
                 c.barrio,
                 c.comunidad
-            FROM
-                public.viviendas v
-            JOIN
-                public.ciudadanos c ON c.id_ciudadano = split_part(v.id_ciudadano, ':', 1)
-            WHERE
-                c.parroquia ILIKE %s
-                AND v.ubicacion IS NOT NULL AND v.ubicacion != '' AND v.ubicacion LIKE '%%,%%';
+            FROM public.viviendas v JOIN public.ciudadanos c ON c.id_ciudadano = split_part(v.id_ciudadano, ':', 1)
+            WHERE c.parroquia ILIKE %s AND v.ubicacion IS NOT NULL AND v.ubicacion != '' AND v.ubicacion LIKE '%%,%%';
         """
         data = execute_query(conn, query, (parroquia.replace('_', ' '),))
         return jsonify({"viviendas": data})
     except Exception as e:
-        print(f"Error en la API de territorio: {e}")
         traceback.print_exc()
         return jsonify({"error": "Error interno del servidor"}), 500
     finally:
         if conn: conn.close()
 
+# ... (el resto de las rutas de API son iguales) ...
 @app.route("/api/poblacion/<nombre_parroquia>")
 def api_poblacion_data(nombre_parroquia):
     conn = get_db_connection()
@@ -156,9 +125,6 @@ def api_poblacion_data(nombre_parroquia):
         jefes_query = f"SELECT c.genero, c.estado_civil, c.id_ciudadano FROM public.familias f JOIN public.ciudadanos c ON c.id_ciudadano = split_part(f.id_ciudadano_cabeza, ':', 1) {where_sql}"
         jefes = execute_query(conn, jefes_query, params)
         return jsonify({"ciudadanos": ciudadanos, "jefes": jefes})
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": "Error interno del servidor"}), 500
     finally:
         if conn: conn.close()
 
@@ -225,9 +191,6 @@ def api_formacion(parroquia):
     finally:
         if conn: conn.close()
 
-# =================================================================
-# INICIAR LA APLICACIÓN
-# =================================================================
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)

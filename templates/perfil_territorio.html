@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfil Territorial: {{ nombre_parroquia }}</title>
+    <title>Perfil territorio: {{ nombre_parroquia }}</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
@@ -32,7 +32,7 @@
 </head>
 <body>
     <div class="main-container">
-        <h1>Perfil Territorial: {{ nombre_parroquia }}</h1>
+        <h1>Perfil territorio: {{ nombre_parroquia }}</h1>
         <nav class="navigation">
             {% for item in navegacion %}
                 <a href="{{ item.href }}" class="{% if item.activo %}active{% endif %}">{{ item.texto }}</a>
