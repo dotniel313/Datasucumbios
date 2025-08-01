@@ -97,6 +97,20 @@ def perfil_formacion_page(nombre_parroquia):
     nombre_formateado, navegacion = generar_navegacion_para_ruta(nombre_parroquia, 'formacion')
     return render_template('perfil_formacion.html', nombre_parroquia=nombre_formateado, navegacion=navegacion)
 
+# --- RUTA PARA LA PÁGINA DE VISTA PROVINCIAL ---
+@app.route("/provincia/poblacion")
+def provincia_poblacion_page():
+    # Para la vista provincial, el nombre es estático.
+    # La navegación se ajustará en futuras versiones si es necesario.
+    nombre_provincia = "Sucumbíos"
+    navegacion_provincial = [
+        {"href": "/provincia/poblacion", "texto": "Población Provincial"},
+        # Aquí se añadirán los futuros enlaces provinciales
+    ]
+    return render_template('perfil_provincia_poblacion.html', 
+                           nombre_parroquia=nombre_provincia, 
+                           navegacion=navegacion_provincial)
+
 # =================================================================
 # RUTAS DE API (JSON)
 # =================================================================
@@ -202,7 +216,107 @@ def api_formacion(parroquia):
         data = execute_query(conn, query, (parroquia.replace('_', ' '),))
         return jsonify({"ciudadanos": data})
     finally:
-        if conn: conn.close()    
+        if conn: conn.close() 
+
+# --- API PARA DATOS AGREGADOS DE TODA LA PROVINCIA ---
+@app.route("/api/provincia_poblacion")
+def api_provincia_poblacion():
+    """
+    Descripción: Esta API agrega los datos de la sección "Población y Diversidad"
+                 de TODAS las parroquias para ofrecer una vista provincial.
+    Cambio Clave: Se han eliminado las cláusulas "WHERE c.parroquia ILIKE %s" 
+                  de todas las consultas SQL para totalizar los datos.
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+        # 1. Indicadores Generales (Total de la Provincia)
+        query_indicadores = f"""
+            SELECT 
+                COUNT(*) AS total_ciudadanos,
+                COUNT(DISTINCT c.id_familia) AS total_familias
+            FROM ciudadanos c;
+        """
+        cur.execute(query_indicadores)
+        indicadores = dict(cur.fetchone())
+
+        # 2. Distribución por Género
+        query_genero = f"""
+            SELECT sexo, COUNT(*) as count
+            FROM ciudadanos
+            GROUP BY sexo
+            ORDER BY sexo;
+        """
+        cur.execute(query_genero)
+        genero_data = [{"name": row['sexo'], "value": row['count']} for row in cur.fetchall()]
+
+        # 3. Distribución por Nacionalidad
+        query_nacionalidad = f"""
+            SELECT nacionalidad, COUNT(*) as count
+            FROM ciudadanos
+            GROUP BY nacionalidad
+            ORDER BY nacionalidad;
+        """
+        cur.execute(query_nacionalidad)
+        nacionalidad_data = [{"name": row['nacionalidad'], "value": row['count']} for row in cur.fetchall()]
+
+        # 4. Autoidentificación Étnica
+        query_etnia = f"""
+            SELECT autoidentificacion_etnica, COUNT(*) as count
+            FROM ciudadanos
+            GROUP BY autoidentificacion_etnica
+            ORDER BY count DESC;
+        """
+        cur.execute(query_etnia)
+        etnia_data = [{"name": row['autoidentificacion_etnica'], "value": row['count']} for row in cur.fetchall()]
+        
+        # 5. Pirámide Poblacional (Grupos de Edad y Género)
+        query_piramide = f"""
+            SELECT fecha_de_nacimiento, sexo FROM ciudadanos;
+        """
+        cur.execute(query_piramide)
+        rows = cur.fetchall()
+        
+        from datetime import date
+        today = date.today()
+        age_data = defaultdict(lambda: defaultdict(int))
+        for row in rows:
+            if row['fecha_de_nacimiento']:
+                age = today.year - row['fecha_de_nacimiento'].year - ((today.month, today.day) < (row['fecha_de_nacimiento'].month, row['fecha_de_nacimiento'].day))
+                age_group = get_age_group(age)
+                sexo = row['sexo'] if row['sexo'] in ['Hombre', 'Mujer'] else 'Otro'
+                age_data[age_group][sexo] += 1
+        
+        categories = sorted(age_data.keys())
+        hombres = [-age_data[cat]['Hombre'] for cat in categories]
+        mujeres = [age_data[cat]['Mujer'] for cat in categories]
+        
+        piramide_data = {
+            'categories': categories,
+            'series': [
+                {'name': 'Hombres', 'type': 'bar', 'stack': 'total', 'data': hombres},
+                {'name': 'Mujeres', 'type': 'bar', 'stack': 'total', 'data': mujeres}
+            ]
+        }
+
+        cur.close()
+        return jsonify({
+            'indicadores': indicadores,
+            'distribucionGenero': genero_data,
+            'distribucionNacionalidad': nacionalidad_data,
+            'distribucionEtnica': etnia_data,
+            'piramidePoblacional': piramide_data,
+        })
+
+    except psycopg2.Error as e:
+        print("Error de base de datos:", e)
+        traceback.print_exc()
+        return jsonify({"error": "Error al consultar la base de datos", "details": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

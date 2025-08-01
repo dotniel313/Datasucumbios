@@ -1,23 +1,25 @@
-<!DOCTYPE html><html lang="es"><head>
+<!DOCTYPE html>
+<html lang="es">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* Estilos idénticos al perfil de población (estable) */
         body { font-family: 'Ubuntu', sans-serif; background-color: #0d1117; color: #c9d1d9; margin: 2em; }
         .main-container { width: 95%; max-width: 1800px; margin: 0 auto; }
         h1 { color: #58a6ff; text-align: center; font-weight: 300; margin-bottom: 20px;}
+        h2.section-title { color: #c9d1d9; font-weight: 400; text-align: left; border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-top: 0; margin-bottom: 20px; font-size: 1.8em; }
+        h3 { font-weight: 400; text-align: left; color: #8b949e; margin: 0; margin-bottom: 15px; }
         .navigation { display: flex; justify-content: center; gap: 15px; margin-bottom: 40px; flex-wrap: wrap; }
-        .navigation a { color: #8b949e; text-decoration: none; padding: 8px 15px; border-radius: 6px; border: 1px solid #30363d; transition: all 0.2s ease-in-out; }
+        .navigation a { color: #8b949e; text-decoration: none; padding: 8px 15px; border-radius: 6px; border: 1px solid #30363d; }
         .navigation a.active, .navigation a:hover { color: #c9d1d9; background-color: #161b22; border-color: #58a6ff; }
-        h2.section-title { color: #c9d1d9; font-weight: 400; text-align: left; border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-top: 40px; margin-bottom: 20px; font-size: 1.8em; }
-        h3 { font-weight: 400; text-align: center; color: #8b949e; margin: 0; }
         .page-layout { display: grid; grid-template-columns: 1fr 3.5fr; gap: 30px; align-items: start; }
         .left-column { display: flex; flex-direction: column; gap: 30px; position: sticky; top: 2em; }
         .main-content { min-width: 0; display: flex; flex-direction: column; gap: 20px; height: 100%; }
         .chart-container { background-color: #161b22; border: 2px solid #30363d; border-radius: 8px; padding: 20px; display:flex; flex-direction:column; }
-        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; }
+        .chart-header h3 { margin-bottom: 0; }
         .chart-header img { max-height: 35px; opacity: 0.7; }
         .main-chart-container { flex-grow: 1; min-height: 0; /* Elimina la altura mínima */ }
         .sidebar-section { background-color: #161b22; border-radius: 8px; padding: 20px; }
@@ -29,10 +31,10 @@
         #filter-status { background-color: #161b22; padding: 15px; border-radius: 8px; }
         #clear-filters { background-color: #f9826c; color: #0d1117; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 15px; }
         .no-data-message { display: flex; justify-content: center; align-items: center; height: 100%; color: #8b949e; font-style: italic; }
-        footer { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 50px; padding-top: 20px; border-top: 1px solid #30363d; color: #8b949e;}
-        footer img { max-height: 40px; opacity: 0.8; }
-        .narrativa-list { list-style: none; padding: 0; margin: 0; text-align: left; }
-        .narrativa-list li { margin-bottom: 8px; }
+        footer { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 50px; padding-top: 20px; border-top: 1px solid #30363d; }
+        footer img { max-height: 30px; opacity: 0.8; }
+        .narrativa-list { list-style: none; padding: 0; margin: 0; }
+        .narrativa-list li { background-color: #0d1117; border-left: 2px solid #58a6ff; padding: 10px; margin-bottom: 8px; border-radius: 4px; font-size: 0.9em; }
     </style>
     <title>Economía de {{ nombre_parroquia }}</title>
 </head>
@@ -46,8 +48,19 @@
         </nav>
         <div class="page-layout">
             <div class="left-column">
+                
                 <div class="sidebar-section" id="kpiContainer"></div>
+                
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Género</h3>
+                        <img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo">
+                    </div>
+                    <div id="generoChart" class="echart-instance"></div>
+                </div>
+                
                 <div class="sidebar-section" id="analisis-dinamico"></div>
+                
                 <div class="sidebar-section">
                     <h3>Filtros</h3>
                     <label for="filtroComunidad" class="kpi-label">Comunidad</label>
@@ -55,20 +68,21 @@
                     <label for="filtroEdad" class="kpi-label">Grupo de Edad</label>
                     <select id="filtroEdad" class="filtro-desplegable"><option value="">Todos</option></select>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-header"><h3>Género</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div>
-                    <div id="generoChart" class="echart-instance"></div>
-                </div>
+                
                 <div id="filter-status" style="display: none;">
-                    <h4>Filtros Activos</h4>
+                    <h3>Filtros Activos</h3>
                     <div id="filter-text"></div>
                     <button id="clear-filters">Limpiar Filtros</button>
                 </div>
+
             </div>
             <div class="main-content">
                 <h2 class="section-title">Actividad Económica</h2>
                 <div class="chart-container main-chart-container">
-                    <div class="chart-header"><h3>Actividad Económica Principal</h3><img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo"></div>
+                    <div class="chart-header">
+                        <h3>Actividad Económica Principal</h3>
+                        <img src="{{ url_for('static', filename='img/logo_datasucumbios.png') }}" alt="DataSucumbios Logo">
+                    </div>
                     <div id="actividadChart" class="echart-instance"></div>
                 </div>
             </div>
@@ -78,12 +92,11 @@
 <script>
     const nombreParroquia = "{{ nombre_parroquia }}";
     let activeFilters = {};
-    const theme = 'dark';
     const toolboxConfig = { show: true, right: 15, top: 0, feature: { saveAsImage: { show: true, title: 'Guardar' }, dataView: { show: true, title: 'Ver Datos' } } };
-    
     let originalData = { ciudadanos: [] };
 
     function calculateCounts(data, key) { if (!data) return {}; return data.reduce((acc, item) => { const value = item[key]; if (value) { acc[value] = (acc[value] || 0) + 1; } return acc; }, {}); }
+    
     function getAgeGroup(edad) {
         if (edad === null || edad === undefined) return 'S/D';
         if (edad <= 9) return "0-9"; if (edad <= 19) return "10-19"; if (edad <= 29) return "20-29";
@@ -115,10 +128,14 @@
     
     function applyFiltersAndRender() {
         let filteredCiudadanos = [...originalData.ciudadanos];
+        
+        // Aplica filtros de los desplegables
         const comunidad = document.getElementById('filtroComunidad').value;
         const grupoEdad = document.getElementById('filtroEdad').value;
         if (comunidad) activeFilters.filtro_comunidad = comunidad; else delete activeFilters.filtro_comunidad;
         if (grupoEdad) activeFilters.filtro_grupo_edad = grupoEdad; else delete activeFilters.filtro_grupo_edad;
+        
+        // Aplica todos los filtros activos (incluyendo los de gráficos)
         for (const key in activeFilters) {
             const filterValue = activeFilters[key];
             const field = key.replace('filtro_', '');
@@ -140,10 +157,10 @@
             <div class="kpi-card"><div class="kpi-value">${kpis.seleccion.toLocaleString()}</div><div class="kpi-label">Población en Selección</div></div>
             <div class="kpi-card"><div class="kpi-value">${kpis.edad_promedio.toFixed(1)}</div><div class="kpi-label">Edad Promedio</div></div>`;
         
+        actualizarAnalisisDinamico(ciudadanos);
+        
         const distGenero = calculateCounts(ciudadanos, 'genero');
         const actividadCounts = calculateCounts(ciudadanos, 'actividad_economica');
-        
-        actualizarAnalisisDinamico(ciudadanos);
         
         createPieOrDonutChart('generoChart', 'Género', distGenero, 'genero', true);
         createHorizontalBarChart('actividadChart', 'Actividad Económica', actividadCounts, 'actividad_economica');
@@ -151,23 +168,18 @@
 
     function actualizarAnalisisDinamico(ciudadanos) {
         const container = document.getElementById('analisis-dinamico');
-        let html = '<h3>Análisis Dinámico</h3>';
+        let html = '<h3>Análisis Dinámico</h3><ul class="narrativa-list">';
         if (ciudadanos.length === 0) {
-            html += '<p>No hay datos para la selección actual.</p>';
-            container.innerHTML = html;
-            return;
+            html += `<li>No hay datos para la selección actual.</li>`;
+        } else {
+            const actividadCounts = calculateCounts(ciudadanos, 'actividad_economica');
+            const [actividadPrincipal, cant] = Object.entries(actividadCounts).sort((a,b) => b[1] - a[1])[0] || [null, null];
+            if (actividadPrincipal) {
+                html += `<li>La actividad principal es <strong>${actividadPrincipal}</strong> (${cant} personas).</li>`;
+            }
+            const edadPromedio = ciudadanos.reduce((sum, c) => sum + (c.edad || 0), 0) / ciudadanos.filter(c => c.edad).length;
+            html += `<li>La edad promedio de este grupo es de <strong>${edadPromedio.toFixed(1)}</strong> años.</li>`;
         }
-        const actividadCounts = calculateCounts(ciudadanos, 'actividad_economica');
-        const actividadPrincipal = Object.keys(actividadCounts).reduce((a, b) => actividadCounts[a] > actividadCounts[b] ? a : b, '');
-        
-        html += '<ul class="narrativa-list">';
-        if (actividadPrincipal) {
-            const totalEnActividad = actividadCounts[actividadPrincipal];
-            const porcentaje = ((totalEnActividad / ciudadanos.length) * 100).toFixed(1);
-            html += `<li>La actividad principal es <strong>${actividadPrincipal}</strong>, ocupando al <strong>${porcentaje}%</strong> de la población en la selección.</li>`;
-        }
-        const edadPromedio = ciudadanos.reduce((sum, c) => sum + (c.edad || 0), 0) / ciudadanos.filter(c => c.edad).length;
-        html += `<li>La edad promedio de este grupo es de <strong>${edadPromedio.toFixed(1)}</strong> años.</li>`;
         html += '</ul>';
         container.innerHTML = html;
     }
@@ -177,7 +189,7 @@
         if (!chartDom) return;
         echarts.dispose(chartDom);
         if (!data || Object.keys(data).length === 0) { chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles.</h3></div>'; return; }
-        const myChart = echarts.init(chartDom, theme);
+        const myChart = echarts.init(chartDom);
         let chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
         chartData.sort((a, b) => a.value - b.value);
         const option = {
@@ -190,39 +202,68 @@
             series: [{ name: title, type: 'bar', data: chartData.map(item => item.value), label: { show: true, position: 'right', color: '#c9d1d9' } }]
         };
         myChart.setOption(option);
-        myChart.on('click', (params) => { const filterName = params.name; if (activeFilters[`filtro_${filterKey}`] === filterName) { delete activeFilters[`filtro_${filterKey}`]; } else { activeFilters[`filtro_${filterKey}`] = filterName; } applyFiltersAndRender(); });
+        myChart.on('click', (params) => { 
+            if (activeFilters[`filtro_${filterKey}`] === params.name) {
+                delete activeFilters[`filtro_${filterKey}`];
+            } else {
+                activeFilters[`filtro_${filterKey}`] = params.name;
+            }
+            applyFiltersAndRender(); 
+        });
     }
 
-    function createPieOrDonutChart(elementId, title, data, filterKey, isDonut) {
+    function createPieOrDonutChart(elementId, title, data, filterKey, isDonut = true) {
         const chartDom = document.getElementById(elementId);
         if (!chartDom) return;
         echarts.dispose(chartDom);
         if (!data || Object.keys(data).length === 0) { chartDom.innerHTML = '<div class="no-data-message"><h3>No hay datos disponibles</h3></div>'; return; }
-        const myChart = echarts.init(chartDom, theme);
+        const myChart = echarts.init(chartDom);
         const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
-        const option = { backgroundColor: 'transparent', tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' }, toolbox: toolboxConfig, series: [{ type: 'pie', radius: isDonut ? ['40%', '70%'] : '65%', center: ['50%', '45%'], data: chartData, label: { show: false } }] };
+        const option = { 
+            backgroundColor: 'transparent', 
+            tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' }, 
+            toolbox: toolboxConfig, 
+            series: [{ 
+                type: 'pie', 
+                radius: isDonut ? ['40%', '70%'] : '65%', 
+                center: ['50%', '50%'], 
+                data: chartData, 
+                label: { show: true, formatter: '{b}\n({d}%)', fontSize: 11, color: '#c9d1d9' },
+                labelLine: { show: true }
+            }] 
+        };
         myChart.setOption(option);
-        myChart.on('click', (params) => { if (activeFilters[`filtro_${filterKey}`] === params.name) { delete activeFilters[`filtro_${filterKey}`]; } else { activeFilters[`filtro_${filterKey}`] = params.name; } applyFiltersAndRender(); });
+        myChart.on('click', (params) => { 
+            if (activeFilters[`filtro_${filterKey}`] === params.name) {
+                delete activeFilters[`filtro_${filterKey}`];
+            } else {
+                activeFilters[`filtro_${filterKey}`] = params.name;
+            }
+            applyFiltersAndRender();
+        });
     }
     
     function updateFilterStatus() {
         const container = document.getElementById('filter-status');
         const textEl = document.getElementById('filter-text');
-        const hasFilters = Object.values(activeFilters).some(v => v);
-        container.style.display = hasFilters ? 'block' : 'none';
-        if (hasFilters) {
-            textEl.innerHTML = `<ul class="narrativa-list" style="margin:0; padding:0;">${Object.entries(activeFilters).filter(([k,v]) => v).map(([k, v]) => `<li><strong>${k.replace('filtro_', '')}:</strong> ${v}</li>`).join('')}</ul>`;
+        if (Object.keys(activeFilters).length > 0) {
+            container.style.display = 'block';
+            textEl.innerHTML = `<ul class="narrativa-list" style="margin:0;padding:0;">${Object.entries(activeFilters).map(([k, v]) => `<li><strong>${k.replace('filtro_', '')}:</strong> ${v}</li>`).join('')}</ul>`;
+        } else {
+            container.style.display = 'none';
         }
     }
     
     document.getElementById('filtroComunidad').addEventListener('change', applyFiltersAndRender);
     document.getElementById('filtroEdad').addEventListener('change', applyFiltersAndRender);
+    
     document.getElementById('clear-filters').addEventListener('click', () => { 
         activeFilters = {}; 
         document.getElementById('filtroComunidad').value = '';
         document.getElementById('filtroEdad').value = '';
         applyFiltersAndRender(); 
     });
+    
     document.addEventListener('DOMContentLoaded', fetchData);
 </script>
 </body>

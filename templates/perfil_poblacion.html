@@ -132,7 +132,7 @@
                 const filterValue = activeFilters[key];
                 const field = key.replace('filtro_', '');
                 
-                const ciudadanoField = field === 'nivel' ? 'nivel_normalizado' : field;
+                const ciudadanoField = field === 'nivel' ? 'nivel' : field;
                 if (ciudadanoField) {
                     filteredCiudadanos = filteredCiudadanos.filter(item => item[ciudadanoField] == filterValue);
                 }
@@ -164,7 +164,7 @@
             
             const distGenero = calculateCounts(ciudadanos, 'genero');
             const distLengua = calculateCounts(ciudadanos, 'lengua_materna');
-            const distNivelLengua = calculateCounts(ciudadanos, 'nivel_normalizado');
+            const distNivelLengua = calculateCounts(ciudadanos, 'nivel');
             const distJefesGenero = calculateCounts(jefes, 'genero');
             const distJefesEstadoCivil = calculateCounts(jefes, 'estado_civil');
             const graficoEdadComunidad = pivotData(ciudadanos, 'comunidad', 'grupo_edad');

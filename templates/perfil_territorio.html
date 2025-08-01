@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,29 +9,163 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
-    
+
     <style>
-        body { font-family: 'Ubuntu', sans-serif; background-color: #0d1117; color: #c9d1d9; margin: 2em; }
-        .main-container { width: 95%; max-width: 1800px; margin: 0 auto; }
-        h1 { color: #58a6ff; text-align: center; font-weight: 300; margin-bottom: 20px; }
-        h3 { font-weight: 400; color: #8b949e; margin: 0; text-align: left; margin-bottom: 15px; }
-        .navigation { display: flex; justify-content: center; gap: 15px; margin-bottom: 40px; flex-wrap: wrap; }
-        .navigation a { color: #8b949e; text-decoration: none; padding: 8px 15px; border-radius: 6px; border: 1px solid #30363d; }
-        .navigation a.active, .navigation a:hover { color: #c9d1d9; background-color: #161b22; border-color: #58a6ff; }
-        .page-layout { display: grid; grid-template-columns: 1fr 3.5fr; gap: 30px; align-items: start; }
-        .left-column { display: flex; flex-direction: column; gap: 30px; position: sticky; top: 2em; }
-        .sidebar-section { background-color: #161b22; border-radius: 8px; padding: 20px; border: 1px solid #30363d; }
-        .chart-container { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; position: relative; }
-        #map { width: 100%; height: 100%; border-radius: 8px; }
-        .filtro-desplegable { width: 100%; padding: 10px; background-color: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; }
-        #clear-filters { width:100%; padding: 8px; margin-top: 15px; background-color: #f9826c; color: #0d1117; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .kpi-card { text-align: center; margin-bottom: 15px; }
-        .kpi-value { font-size: 2.5em; font-weight: 700; color: #c9d1d9; transition: all 0.3s ease-in-out; }
-        .kpi-label { font-size: 1em; color: #8b949e; text-align: center; }
-        .narrativa-list { list-style: none; padding: 0; margin: 0; }
-        .narrativa-list li { background-color: #0d1117; border-left: 2px solid #58a6ff; padding: 10px; margin-bottom: 8px; border-radius: 4px; font-size: 0.9em; }
-        footer { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 50px; padding-top: 20px; border-top: 1px solid #30363d; }
-        footer img { max-height: 40px; }
+        body {
+            font-family: 'Ubuntu', sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            margin: 2em;
+        }
+
+        .main-container {
+            width: 95%;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #58a6ff;
+            text-align: center;
+            font-weight: 300;
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            font-weight: 400;
+            color: #8b949e;
+            margin: 0;
+            text-align: left;
+            margin-bottom: 15px;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .navigation a {
+            color: #8b949e;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        .navigation a.active,
+        .navigation a:hover {
+            color: #c9d1d9;
+            background-color: #161b22;
+            border-color: #58a6ff;
+        }
+
+        .page-layout {
+            display: grid;
+            grid-template-columns: 1fr 3.5fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            position: sticky;
+            top: 2em;
+        }
+
+        .sidebar-section {
+            background-color: #161b22;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #30363d;
+        }
+
+        .chart-container {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+
+        .filtro-desplegable {
+            width: 100%;
+            padding: 10px;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+        }
+
+        #clear-filters {
+            width: 100%;
+            padding: 8px;
+            margin-top: 15px;
+            background-color: #f9826c;
+            color: #0d1117;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .kpi-card {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .kpi-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #c9d1d9;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .kpi-label {
+            font-size: 1em;
+            color: #8b949e;
+            text-align: center;
+        }
+
+        .narrativa-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .narrativa-list li {
+            background-color: #0d1117;
+            border-left: 2px solid #58a6ff;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #30363d;
+        }
+
+        footer img {
+            max-height: 40px;
+        }
+
         .loading-overlay {
             position: absolute;
             top: 0;
@@ -48,27 +183,34 @@
         }
     </style>
 </head>
+
 <body>
     <div class="main-container">
         <h1>Perfil Territorio: {{ nombre_parroquia }}</h1>
         <nav class="navigation">
             {% for item in navegacion %}
-                <a href="{{ item.href }}" class="{% if item.activo %}active{% endif %}">{{ item.texto }}</a>
+            <a href="{{ item.href }}" class="{% if item.activo %}active{% endif %}">{{ item.texto }}</a>
             {% endfor %}
         </nav>
         <div class="page-layout">
             <div class="left-column">
-                <div class="sidebar-section">
-                    <h3>Filtros</h3>
-                    <label for="comunidad-filtro" class="kpi-label" style="text-align: left;">Filtrar por Comunidad</label>
-                    <select id="comunidad-filtro" class="filtro-desplegable"><option value="Todas">-- Todas --</option></select>
-                </div>
-                <div class="sidebar-section" id="analisis-dinamico">
-                    <h3>Análisis Dinámico</h3>
-                    <ul class="narrativa-list" id="narrativa-dinamica-lista"></ul>
-                </div>
+
                 <div class="sidebar-section" id="kpiContainer"></div>
                 <div id="filter-status" class="sidebar-section" style="display: none;">
+
+                    <div class="sidebar-section">
+                        <h3>Filtros</h3>
+                        <label for="comunidad-filtro" class="kpi-label" style="text-align: left;">Filtrar por
+                            Comunidad</label>
+                        <select id="comunidad-filtro" class="filtro-desplegable">
+                            <option value="Todas">-- Todas --</option>
+                        </select>
+                    </div>
+                    <div class="sidebar-section" id="analisis-dinamico">
+                        <h3>Análisis Dinámico</h3>
+                        <ul class="narrativa-list" id="narrativa-dinamica-lista"></ul>
+                    </div>
+
                     <h3>Filtros Activos</h3>
                     <div id="filter-text"></div>
                     <button id="clear-filters">Limpiar Filtros</button>
@@ -126,7 +268,7 @@
                 return;
             }
             const conteoComunidades = viviendasFiltradas.reduce((acc, v) => {
-                if(v.comunidad) acc[v.comunidad] = (acc[v.comunidad] || 0) + 1;
+                if (v.comunidad) acc[v.comunidad] = (acc[v.comunidad] || 0) + 1;
                 return acc;
             }, {});
             const comunidadesUnicas = Object.keys(conteoComunidades);
@@ -134,7 +276,7 @@
             html += `<li>La selección actual incluye <strong>${totalViviendas.toLocaleString()}</strong> viviendas.</li>`;
             if (totalComunidades > 1) {
                 html += `<li>Distribuidas en <strong>${totalComunidades}</strong> comunidades.</li>`;
-                const [comunidadPrincipal, cantidad] = Object.entries(conteoComunidades).sort((a,b) => b[1] - a[1])[0];
+                const [comunidadPrincipal, cantidad] = Object.entries(conteoComunidades).sort((a, b) => b[1] - a[1])[0];
                 html += `<li>La comunidad con más viviendas es <strong>${comunidadPrincipal}</strong> con ${cantidad}.</li>`;
             } else if (totalComunidades === 1) {
                 html += `<li>Todas pertenecen a la comunidad de <strong>${comunidadesUnicas[0]}</strong>.</li>`;
@@ -165,7 +307,7 @@
             currentlyDisplayedData = viviendasFiltradas;
             const colors = {}; let colorIndex = 0;
             const palette = ['#4CAF50', '#FF9800', '#03A9F4', '#E91E63', '#9C27B0', '#FFC107', '#00BCD4', '#8BC34A', '#FF5722', '#009688'];
-            
+
             viviendasFiltradas.forEach(v => {
                 // SUGERENCIA 'b': Validación de Coordenadas Mejorada
                 if (typeof v.lat !== 'number' || typeof v.lng !== 'number' ||
@@ -175,7 +317,7 @@
                     console.warn('Coordenadas inválidas y omitidas:', v);
                     return;
                 }
-                
+
                 const color = colors[v.comunidad] || (colors[v.comunidad] = palette[colorIndex++ % palette.length]);
                 const marker = L.circleMarker([v.lat, v.lng], { radius: 6, fillColor: color, color: '#ccc', weight: 1, opacity: 1, fillOpacity: 0.8 });
                 marker.bindPopup(`<b>Comunidad:</b> ${v.comunidad || 'Sin datos'}<br><b>Barrio:</b> ${v.barrio || 'Sin datos'}`);
@@ -190,10 +332,10 @@
             } else {
                 map.setView([-0.5, -76.9], 9);
             }
-            
+
             const legend = document.getElementById('legend');
             if (legend) {
-                legend.innerHTML = Object.entries(colors).sort((a,b) => a[0].localeCompare(b[0])).map(([comunidad, color]) => `
+                legend.innerHTML = Object.entries(colors).sort((a, b) => a[0].localeCompare(b[0])).map(([comunidad, color]) => `
                     <div style="margin-bottom: 4px;"><span style="display:inline-block;width:12px;height:12px;background:${color};border-radius:50%;margin-right:8px;vertical-align:middle;"></span>${comunidad}</div>
                 `).join('');
             }
@@ -212,14 +354,14 @@
             });
             updateDashboard(viviendasVisibles);
         }
-        
+
         function populateCommunityFilter(viviendas) {
             const selector = document.getElementById('comunidad-filtro');
             selector.innerHTML = '<option value="Todas">-- Todas las Comunidades --</option>';
             const comunidades = [...new Set(viviendas.map(v => v.comunidad).filter(Boolean))].sort();
             comunidades.forEach(c => { selector.add(new Option(c, c)); });
         }
-    
+
         async function initializeMap() {
             const mapContainer = document.getElementById('map').parentElement;
 
@@ -232,7 +374,7 @@
             try {
                 // SUGERENCIA de investigación: Añadir maxZoom a L.map
                 map = L.map('map', { maxZoom: 18 }).setView([-0.5, -76.9], 9);
-                
+
                 clusterGroup = L.markerClusterGroup();
                 map.addLayer(clusterGroup);
 
@@ -240,18 +382,18 @@
                     attribution: '© OpenStreetMap',
                     maxZoom: 18
                 }).addTo(map);
-                
+
                 // SUGERENCIA 'a': Manejo de Nombres en la URL
                 const nombreParroquiaAPI = "{{ nombre_parroquia|replace(' ', '_')|urlencode }}";
                 const response = await fetch(`/api/territorio/${nombreParroquiaAPI}`);
-                
+
                 if (!response.ok) throw new Error(`Error HTTP ${response.status}`);
                 const data = await response.json();
                 allViviendas = data.viviendas || [];
-                
+
                 populateCommunityFilter(allViviendas);
                 displayFilteredMarkers();
-                
+
                 map.on('moveend', refreshDynamicData);
                 document.getElementById('comunidad-filtro').addEventListener('change', displayFilteredMarkers);
                 document.getElementById('clear-filters').addEventListener('click', () => {
@@ -269,8 +411,9 @@
                 }, 500);
             }
         }
-    
+
         document.addEventListener('DOMContentLoaded', initializeMap);
     </script>
 </body>
+
 </html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Población y Diversidad - {{ nombre_parroquia }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 20px; background-color: #f4f4f9; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .navigation { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; padding: 10px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .navigation a { text-decoration: none; color: #007BFF; padding: 10px 15px; border-radius: 5px; transition: background-color 0.3s; }
+        .navigation a:hover { background-color: #e9ecef; }
+        .dashboard-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+        .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .chart { width: 100%; height: 400px; }
+        .kpi-container { display: flex; justify-content: space-around; text-align: center; }
+        .kpi h3 { margin: 0; color: #007BFF; font-size: 2.5em; }
+        .kpi p { margin: 5px 0 0; color: #6c757d; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Vista Provincial: Población y Diversidad</h1>
+        <h2>{{ nombre_parroquia }}</h2>
+    </div>
+    
+    <nav class="navigation">
+        {% for item in navegacion %}
+            <a href="{{ item.href }}">{{ item.texto }}</a>
+        {% endfor %}
+    </nav>
+
+    <div class="dashboard-container">
+        <div class="card">
+            <h2>Indicadores Generales</h2>
+            <div class="kpi-container">
+                <div class="kpi">
+                    <h3 id="total-ciudadanos">Cargando...</h3>
+                    <p>Ciudadanos Registrados</p>
+                </div>
+                <div class="kpi">
+                    <h3 id="total-familias">Cargando...</h3>
+                    <p>Familias Registradas</p>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Distribución por Género</h2>
+            <div id="chart-genero" class="chart"></div>
+        </div>
+        <div class="card">
+            <h2>Distribución por Nacionalidad</h2>
+            <div id="chart-nacionalidad" class="chart"></div>
+        </div>
+         <div class="card">
+            <h2>Autoidentificación Étnica</h2>
+            <div id="chart-etnia" class="chart"></div>
+        </div>
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2>Pirámide Poblacional</h2>
+            <div id="chart-piramide" class="chart"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Función para inicializar un gráfico de pastel (pie chart)
+            const initPieChart = (elementId, title, data) => {
+                const chartDom = document.getElementById(elementId);
+                const myChart = echarts.init(chartDom);
+                const option = {
+                    title: { text: title, left: 'center' },
+                    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                    legend: { orient: 'vertical', left: 'left' },
+                    series: [{
+                        name: 'Distribución',
+                        type: 'pie',
+                        radius: '50%',
+                        data: data,
+                        emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' } }
+                    }]
+                };
+                myChart.setOption(option);
+            };
+            
+            // Función para inicializar el gráfico de pirámide poblacional
+            const initPyramidChart = (elementId, title, data) => {
+                const chartDom = document.getElementById(elementId);
+                const myChart = echarts.init(chartDom);
+                const option = {
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: { type: 'shadow' },
+                        formatter: function (params) {
+                            let res = params[0].name + '<br/>';
+                            params.forEach(param => {
+                                res += `${param.seriesName}: ${Math.abs(param.value)}<br/>`;
+                            });
+                            return res;
+                        }
+                    },
+                    legend: { data: ['Hombres', 'Mujeres'] },
+                    xAxis: [{ type: 'value', min: -data.series[0].data.reduce((a, b) => Math.min(a, b), 0), max: data.series[1].data.reduce((a, b) => Math.max(a, b), 0) }],
+                    yAxis: [{ type: 'category', data: data.categories }],
+                    series: data.series.map(s => ({
+                        ...s,
+                        label: { show: true, position: 'inside', formatter: ({value}) => Math.abs(value) }
+                    }))
+                };
+                myChart.setOption(option);
+            };
+
+            // Función principal para obtener y renderizar los datos
+            const fetchData = async () => {
+                try {
+                    // **PUNTO CLAVE**: Apuntamos a la nueva API provincial
+                    const response = await fetch('/api/provincia_poblacion');
+                    if (!response.ok) throw new Error('La respuesta de la red no fue correcta.');
+                    const data = await response.json();
+
+                    // Renderizar Indicadores
+                    document.getElementById('total-ciudadanos').textContent = data.indicadores.total_ciudadanos.toLocaleString();
+                    document.getElementById('total-familias').textContent = data.indicadores.total_familias.toLocaleString();
+
+                    // Renderizar Gráficos
+                    initPieChart('chart-genero', 'Género', data.distribucionGenero);
+                    initPieChart('chart-nacionalidad', 'Nacionalidad', data.distribucionNacionalidad);
+                    initPieChart('chart-etnia', 'Etnia', data.distribucionEtnica);
+                    initPyramidChart('chart-piramide', 'Pirámide Poblacional', data.piramidePoblacional);
+
+                } catch (error) {
+                    console.error("Error al obtener o procesar los datos:", error);
+                    // Aquí podrías mostrar un mensaje de error en la UI
+                }
+            };
+
+            fetchData();
+        });
+    </script>
+</body>
+</html>
